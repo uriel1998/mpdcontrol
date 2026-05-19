@@ -154,21 +154,12 @@ main (){
 	#icon,source,title,full specification (url, text file to select on, whatever)
 
 	if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
-		# get playlists (prefix §) 📋
+		# get playlists  
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists | sed 's/.*/&,&/' | sed 's/^/🎛️,playlist,/g'  
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
-		# get stations (prefix an emoji)  §🎛️
-		${mpdq_bin} -e | sed -n '
-/\/default[^/]*\.cfg$/d
-h
-s#.*/##
-s/\.cfg$//
-s#^#🎛️,station,#
-G
-s/\n/,/
-p
-'
+		# get stations  
+		${mpdq_bin} -e | sed -n '/\/default[^/]*\.cfg$/d; h; s#.*/##; s/\.cfg$//; s#^#🎛️,station,#; G; s/\n/,/; p'
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
 		# get listen to di or other playlist (prefix an emoji) 📡
@@ -183,35 +174,35 @@ p
 					elif [[ $line == Title* ]]; then
 						title=$(echo "$line" | cut -d'=' -f2)
 						# Append title and url to variable 
-		# TODO MAKE THE VARIABLE WITH STATION EMJOI				
-						echo "$title ‡ $url" >> "$temp_file"
+						# THIS WILL GO TO OUR LIST ARRAY/VARIABLE			
+						echo "📻,radio,$title,$url" 
 					fi
 					done < "$pls_file"
 			done
 		fi
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
-		# get webradio presets from radiotray (prefix an emoji) 📻
+		# get webradio presets from radiotray (functionally equivalent to listen to di here)
 		if [ -f "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
 			${jq_bin} -r '
 				.[]
 				| .stations[]
-				| "\(.name) ‡ \(.url)"
-			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
+				| "📻,radio,\(.name),\(.url)"
+			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" | 
 		# TODO MAKE THE VARIABLE WITH STATION EMJOI				
 		fi
 	fi	
 	if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
 		# get genre 🎼
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list genre | sed 's/.*/&,&/' | sed 's/^/🎼,genre,/g'  
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
 		# get album_artist  🎸
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist | sed 's/.*/&,&/' | sed 's/^/🎸,artist,/g'  
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
 		# get album 💿  (present as album by AlbumArtist)
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album | sed 's/.*/&,&/' | sed 's/^/💿,album,/g'  
 	fi
 
 
