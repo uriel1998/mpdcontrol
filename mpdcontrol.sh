@@ -40,6 +40,7 @@ LISTEN_TO_DI_PLS=""
 ADDMODE="1"    
 host_arg=""
 LOUD="0"
+FZF_LINES=()
 
 ###############################################################functions
 function loud() {
@@ -59,6 +60,14 @@ function warn() {
 
 function error() {
 	loud "[error] $@"
+}
+
+function append_fzf_lines() {
+	while IFS= read -r line; do
+		if [ -n "$line" ]; then
+			FZF_LINES+=("$line")
+		fi
+	done
 }
 
 function set_host_arg() {
@@ -148,18 +157,18 @@ read_arguments (){
 	done
 }
 
-§ ¥¡†‡
+ 
 main (){
 	#all of these need to be stored in a single data format
 	#icon,source,title,full specification (url, text file to select on, whatever)
-
+	
 	if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
 		# get playlists  
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists | sed 's/.*/&,&/' | sed 's/^/🎛️,playlist,/g'  
+		append_fzf_lines < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists | sed 's/.*/&,&/' | sed 's/^/🎛️,playlist,/g')
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
 		# get stations  
-		${mpdq_bin} -e | sed -n '/\/default[^/]*\.cfg$/d; h; s#.*/##; s/\.cfg$//; s#^#🎛️,station,#; G; s/\n/,/; p'
+		append_fzf_lines < <(${mpdq_bin} -e | sed -n '/\/default[^/]*\.cfg$/d; h; s#.*/##; s/\.cfg$//; s#^#🎛️,station,#; G; s/\n/,/; p')
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
 		# get listen to di or other playlist (prefix an emoji) 📡
@@ -171,43 +180,46 @@ main (){
 					# Check if the line contains a File or Title
 					if [[ $line == File* ]]; then
 						url=$(echo "$line" | cut -d'=' -f2)
-					elif [[ $line == Title* ]]; then
-						title=$(echo "$line" | cut -d'=' -f2)
-						# Append title and url to variable 
-						# THIS WILL GO TO OUR LIST ARRAY/VARIABLE			
-						echo "📻,radio,$title,$url" 
-					fi
-					done < "$pls_file"
-			done
-		fi
+						elif [[ $line == Title* ]]; then
+							title=$(echo "$line" | cut -d'=' -f2)
+							# Append title and url to variable 
+							# THIS WILL GO TO OUR LIST ARRAY/VARIABLE			
+							FZF_LINES+=("📻,radio,$title,$url")
+						fi
+						done < "$pls_file"
+				done
+			fi
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
 		# get webradio presets from radiotray (functionally equivalent to listen to di here)
 		if [ -f "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
-			${jq_bin} -r '
+			append_fzf_lines < <(${jq_bin} -r '
 				.[]
 				| .stations[]
 				| "📻,radio,\(.name),\(.url)"
-			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
-			# TODO MAKE THE VARIABLE WITH STATION EMJOI				
-			fi
+			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json")
+				# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+				fi
 	fi	
 	if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
 		# get genre 🎼
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list genre | sed 's/.*/&,&/' | sed 's/^/🎼,genre,/g'  
+		append_fzf_lines < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list genre | sed 's/.*/&,&/' | sed 's/^/🎼,genre,/g')
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
 		# get album_artist  🎸
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist | sed 's/.*/&,&/' | sed 's/^/🎸,artist,/g'  
+		append_fzf_lines < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist | sed 's/.*/&,&/' | sed 's/^/🎸,artist,/g')
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
 		# get album 💿  (present as album by AlbumArtist)
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album | sed 's/.*/&,&/' | sed 's/^/💿,album,/g'  
+		append_fzf_lines < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album | sed 's/.*/&,&/' | sed 's/^/💿,album,/g')
 	fi
 
 
 	# present in big ass scrollable list
 	# throw into fzf
+	if [ ${#FZF_LINES[@]} -gt 0 ]; then
+		printf '%s\n' "${FZF_LINES[@]}" | ${fzf_bin}
+	fi
 
 	#then use case to split out how to pass them along
 		
