@@ -82,7 +82,7 @@ function read_variables() {
 read_arguments (){
 	#limit data arguments
 	# These set a global variable or array that is checked in 
-	# main
+	# main by appending the string, e.g. --playlists appends 'playlists '
 	# --playlists -> include playlists from mpc
 	# --stations -> include stations from mpdq
 	# --listentodi -> include playlists from DI_PLS_DIR
@@ -90,7 +90,7 @@ read_arguments (){
 	# --genre -> include genres
 	# --album -> include artist	
 	# --album -> include albums
-	# --all -> include all
+	# --all -> include all, appends string for all to INCLUDE SOURCES
 	
 	# --playlist-dir -> specify DI_PLS_DIR
 }
