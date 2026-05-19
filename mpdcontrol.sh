@@ -9,7 +9,8 @@
 ################################################################################
 
 
-export SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+export SCRIPT_DIR
 
 # Setting them here, will create if needed later
 # Chooses ./config FIRST by default
@@ -25,7 +26,7 @@ fi
 if [ -f "$ConfigDir/mpdc.ini" ];then
 	ConfigFile="$ConfigDir/mpdc.ini"
 elif [ -f "$ConfigDir/mpdq.ini" ];then
-	"$ConfigDir/mpdq.ini"
+	ConfigFile="$ConfigDir/mpdq.ini"
 fi
 
 # Globals
@@ -41,7 +42,7 @@ LISTEN_TO_DI_PLS=""
 # 0 - add
 # 1 - clear
 # 2 - crop (with bumper)
-ADDMODE="2"     
+ADDMODE=""
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -49,21 +50,21 @@ FZF_LINES=()
 ###############################################################functions
 function loud() {
 	# loud outputs on stderr
-    if [ $LOUD -eq 1 ];then
-        echo "$@" 1>&2
-    fi
+	if [ "$LOUD" -eq 1 ];then
+		printf '%s\n' "$*" 1>&2
+	fi
 }
 
 function info() {
-	loud "[info] $@"
+	loud "[info] $*"
 }
 
 function warn() {
-	loud "[warn] $@"
+	loud "[warn] $*"
 }
 
 function error() {
-	loud "[error] $@"
+	loud "[error] $*"
 }
 
 function append_fzf_lines() {
@@ -84,6 +85,7 @@ function set_host_arg() {
 }
 
 function read_variables() {
+	config=""
     if [ -f "$ConfigFile" ];then
         config=$(cat "$ConfigFile")
     else
@@ -92,7 +94,7 @@ function read_variables() {
     
     # If there's no config file or a line is malformed or missing, sub in the default value
     MPDBASE="$(echo "$config" | ${grep_bin} -e "^musicdir=" | cut -d = -f 2- ||
-        cat "$XDG_CONFIG_HOME/mpd/mpd.conf" | ${grep_bin} "^music" | cut -d'"' -f2 ||
+        ${grep_bin} "^music" "$XDG_CONFIG_HOME/mpd/mpd.conf" | cut -d'"' -f2 ||
         echo "$HOME/Music")"
     if [ -z "$MPD_HOST" ]; then
         MPD_HOST="$(echo "$config" | ${grep_bin} -e "^mpdserver=" | cut -d = -f 2-)"
@@ -112,9 +114,15 @@ function read_variables() {
     set_host_arg
     # preferentially use argument
     if [ -z "${DI_PLS_DIR}" ];then
-		DI_PLS_DIR="$(echo "$config" | ${grep_bin} -e "^DI_PLS_DIR=" | cut -d = -f 2- || echo "$DI_PLS_DIR")"
+		DI_PLS_DIR="$(echo "$config" | ${grep_bin} -e "^DI_PLS_DIR=" | cut -d = -f 2-)"
 	fi
-}
+	    if [ -z "${ADDMODE}" ];then
+			ADDMODE="$(echo "$config" | ${grep_bin} -e "^ADDMODE=" | cut -d = -f 2-)"
+		fi
+	    if [ -z "${ADDMODE}" ];then
+			ADDMODE="0"
+		fi
+	}
 
 read_arguments (){
 	#limit data arguments
@@ -132,6 +140,12 @@ read_arguments (){
 	# --playlist-dir -> specify DI_PLS_DIR
 	while [ $# -gt 0 ]; do
 		case "$1" in
+			--clear)
+				ADDMODE=1
+				;;
+			--crop)
+				ADDMODE=2
+				;;
 			--playlists)
 				INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
 				;;
@@ -196,7 +210,7 @@ clearmode (){
     
  
 main (){
-		
+	FZF_LINES=()
 	local fzf_result=""
 	local result_line=""
 	local source=""
@@ -219,6 +233,9 @@ main (){
 		# Loop through all .pls files in the specified directory
 		if [ -d "${DI_PLS_DIR}" ];then 
 			for pls_file in "${DI_PLS_DIR}"/*.pls; do
+				if [ ! -e "$pls_file" ]; then
+					continue
+				fi
 				# Parse each .pls file
 				while IFS= read -r line; do
 					# Check if the line contains a File or Title
@@ -268,7 +285,7 @@ main (){
 			cut -f2-)
 	fi
 
-	if [ ${#fzf_result[@]} -gt 0 ];then
+	if [ -n "$fzf_result" ];then
 		# if the result from fzf is not null
 		clearmode
 		#then loop over the result, splitting out how to pass them along
