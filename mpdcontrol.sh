@@ -14,8 +14,8 @@ export SCRIPT_DIR
 
 # Setting them here, will create if needed later
 # Chooses ./config FIRST by default
-if [ -w "${SCRIPT_DIR}/config" ]; then
-	ConfigDir="${SCRIPT_DIR}/config"
+if [ -w "${SCRIPT_DIR}" ]; then
+	ConfigDir="${SCRIPT_DIR}"
 elif [ -n "${XDG_CONFIG_HOME}" ]; then
 	ConfigDir="${XDG_CONFIG_HOME}/mpdc"
 else
@@ -111,8 +111,12 @@ function read_variables() {
     if [ -z "$MPD_PORT" ]; then
         MPD_PORT="6600"
     fi
-    set_host_arg
-    # preferentially use argument
+	    set_host_arg
+	    info "Using MPD host ${MPD_HOST}:${MPD_PORT}"
+	    if [ -n "$MPD_PASS" ]; then
+			info "MPD password is set"
+	    fi
+	    # preferentially use argument
     if [ -z "${DI_PLS_DIR}" ];then
 		DI_PLS_DIR="$(echo "$config" | ${grep_bin} -e "^DI_PLS_DIR=" | cut -d = -f 2-)"
 	fi
@@ -122,6 +126,7 @@ function read_variables() {
 	    if [ -z "${ADDMODE}" ];then
 			ADDMODE="0"
 		fi
+	    ADDMODE="$(printf '%s' "$ADDMODE" | tr -d '\r' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
 	}
 
 read_arguments (){
@@ -145,6 +150,9 @@ read_arguments (){
 				;;
 			--crop)
 				ADDMODE=2
+				;;
+			--loud)
+				LOUD=1
 				;;
 			--playlists)
 				INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
@@ -188,24 +196,36 @@ read_arguments (){
 }
 
 clearmode (){  
-	if [ "$ADDMODE" == "1" ];then
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
-	fi
-	if [ "$ADDMODE" == "2" ];then
-		# if it is a url, it won't move off of it.
-		current_file=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" --format %file% current)
-		if [[ "$current_file" == http://* || "$current_file" == https://* ]]; then
+	info "ADDMODE is ${ADDMODE}"
+	case "$ADDMODE" in
+		1)
+			info "Clearing current playlist"
 			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
-		else
-			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
-		fi
-		# if there is anything in genre "Bumper" then choose one randomly and add it.
-		SongStem=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find genre "Bumper" | shuf -n1)
-		if [ "$SongStem" != "" ];then
-			SongFile="$MPDBASE/$SongStem"
-			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" add "${SongStem}"
-		fi            
-	fi
+			;;
+		2)
+			info "Cropping current playlist and adding bumper if available"
+			# if it is a url, it won't move off of it.
+			current_file=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" --format %file% current)
+			if [[ "$current_file" == http://* || "$current_file" == https://* ]]; then
+				info "Current track is a stream URL; clearing instead of cropping"
+				${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
+			else
+				${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
+			fi
+			# if there is anything in genre "Bumper" then choose one randomly and add it.
+			SongStem=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find genre "Bumper" | shuf -n1)
+			if [ "$SongStem" != "" ];then
+				SongFile="$MPDBASE/$SongStem"
+				${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" add "${SongStem}"
+			fi
+			;;
+		0)
+			:
+			;;
+		*)
+			warn "Unknown ADDMODE '$ADDMODE'; defaulting to add mode."
+			;;
+	esac
 }
     
  
@@ -279,6 +299,7 @@ main (){
 	# present in big ass scrollable list
 	# throw into fzf
 	if [ ${#FZF_LINES[@]} -gt 0 ]; then
+		info "Built ${#FZF_LINES[@]} selectable entries"
 		fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
 			awk -F, '{print $1 " - " $3 "\t" $0}' |
 			${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
@@ -286,6 +307,7 @@ main (){
 	fi
 
 	if [ -n "$fzf_result" ];then
+		info "Selection made; processing results"
 		# if the result from fzf is not null
 		clearmode
 		#then loop over the result, splitting out how to pass them along
@@ -297,6 +319,7 @@ main (){
 
 			source=$(printf '%s\n' "$result_line" | cut -d',' -f2)
 			payload=$(printf '%s\n' "$result_line" | cut -d',' -f4-)
+			info "Handling source ${source}"
 
 			case "$source" in
 				radio)
