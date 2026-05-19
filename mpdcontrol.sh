@@ -1,19 +1,98 @@
 #!/bin/bash
 
 ################################################################################
-#  A simple utility to allow playlist selection and playing from cli for MPD
+# A rewritten script of a utility to make it simple to control MPD without 
+# having to be too damn specific about anything. 
 #
-#  by Steven Saus
-#
-#  Licensed under a Creative Commons BY-SA 3.0 Unported license
-#  To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/3.0/.
+# by Steven Saus
 #
 ################################################################################
+
+
 ADDMODE="1"    
-    
-    if [ -z "$MPD_HOST" ];then
-        MPD_HOST=localhost
+export SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+# Setting them here, will create if needed later
+# Chooses ./config FIRST by default
+if [ -w "${SCRIPT_DIR}/config" ]; then
+	ConfigDir="${SCRIPT_DIR}/config"
+elif [ -n "${XDG_CONFIG_HOME}" ]; then
+	ConfigDir="${XDG_CONFIG_HOME}/mpdc"
+else
+	ConfigDir="$HOME/.config/mpdc"
+fi
+
+# check for existence is in read_variables
+if [ -f "$ConfigDir/mpdc.ini" ];then
+	ConfigFile="$ConfigDir/mpdc.ini"
+elif [ -f "$ConfigDir/mpdq.ini" ];then
+	"$ConfigDir/mpdq.ini"
+fi
+
+
+function loud() {
+    if [ $LOUD -eq 1 ];then
+        echo "$@"
     fi
+}
+
+function set_host_arg() {
+    # in case the password is already set in environment
+    if [ -n "$MPD_PASS" ] && [ "$MPD_HOST" != *"@"* ]; then
+        host_arg="$MPD_PASS@$MPD_HOST"
+    else
+        host_arg="$MPD_HOST"
+    fi
+}
+
+function read_variables() {
+    if [ -f "$ConfigFile" ];then
+        config=$(cat "$ConfigFile")
+    else
+        loud "Configuration file not found; using defaults."
+    fi
+    # If there's no config file or a line is malformed or missing, sub in the default value
+
+    MPD_HOST="$(echo "$config" | ${grep_bin} -e "^mpdserver=" | cut -d = -f 2- || echo localhost)"
+    MPD_PASS=$(echo "$config" | ${grep_bin} -e "^mpdpass=" | cut -d = -f 2-)
+    MPD_PORT=$(echo "$config" | ${grep_bin} -e "^mpdport=" | cut -d = -f 2- || echo 6600)
+    set_host_arg
+    # fallback of fallbacks
+	if [ -z "$MPD_HOST" ];then
+		MPD_HOST=localhost
+	fi
+    
+}
+
+
+
+# get playlists (prefix an emoji) 📋
+# get stations (prefix an emoji) 🎛️
+# get listen to di (prefix an emoji) 📡
+# get webradio presets from radiotray (prefix an emoji) 📻
+# get genre 🎼
+# get album_artist  🎸
+# get album 💿  (present as album by AlbumArtist)
+# get track 🎶 (present as track by Artist)
+mpc lsplaylists
+mpdq -e (need to trim path and ext)
+mpc list album group genre
+mpc list artist group genre 
+listen to di reads pls files
+
+all of these need to be stored in a single data format
+icon,source,title,full specification (url, text file to select on, whatever)
+then use case to split out how to pass them along
+	
+	(streamlink, url, whatever)
+	
+	Just do playlists and stations and listentodi to start, then add in the rest
+# present in big ass scrollable list
+# throw into fzf|rofi | php ?? 
+# get result, pipe back to mpc, mpdq, listen_to_di, however pipe in webradio preset
+  
+
+    
     
     if [ "$1" == "-c" ];then
         ADDMODE="0"
