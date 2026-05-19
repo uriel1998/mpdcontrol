@@ -148,70 +148,79 @@ read_arguments (){
 	done
 }
 
-
+§ ¥¡†‡
 main (){
+	#all of these need to be stored in a single data format
+	#icon,source,title,full specification (url, text file to select on, whatever)
 
-if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
-	# get playlists (prefix an emoji) 📋
-	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists
-fi
-if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
-	# get stations (prefix an emoji) 🎛️
-	# TODO trim path and extension from station output
-	${mpdq_bin} -e
-fi
-if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
-	# get listen to di or other playlist (prefix an emoji) 📡
-	# Loop through all .pls files in the specified directory
-	if [ -d "${DI_PLS_DIR}" ];then 
-		for pls_file in "${DI_PLS_DIR}"/*.pls; do
-			# Parse each .pls file
-			while IFS= read -r line; do
-				# Check if the line contains a File or Title
-				if [[ $line == File* ]]; then
-					url=$(echo "$line" | cut -d'=' -f2)
-				elif [[ $line == Title* ]]; then
-					title=$(echo "$line" | cut -d'=' -f2)
-					# Append title and url to variable 
-	# TODO MAKE THE VARIABLE WITH STATION EMJOI				
-					echo "$title ‡ $url" >> "$temp_file"
-				fi
-				done < "$pls_file"
-		done
+	if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
+		# get playlists (prefix §) 📋
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists | sed 's/.*/&,&/' | sed 's/^/🎛️,playlist,/g'  
 	fi
-fi
-if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
-	# get webradio presets from radiotray (prefix an emoji) 📻
-	if [ -f "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
-		${jq_bin} -r '
-			.[]
-			| .stations[]
-			| "\(.name) ‡ \(.url)"
-		' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
-	# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+	if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
+		# get stations (prefix an emoji)  §🎛️
+		${mpdq_bin} -e | sed -n '
+/\/default[^/]*\.cfg$/d
+h
+s#.*/##
+s/\.cfg$//
+s#^#🎛️,station,#
+G
+s/\n/,/
+p
+'
 	fi
-fi	
-if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
-	# get genre 🎼
-	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre
-fi
-if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
-	# get album_artist  🎸
-	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
-fi
-if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
-	# get album 💿  (present as album by AlbumArtist)
-	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
-fi
+	if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
+		# get listen to di or other playlist (prefix an emoji) 📡
+		# Loop through all .pls files in the specified directory
+		if [ -d "${DI_PLS_DIR}" ];then 
+			for pls_file in "${DI_PLS_DIR}"/*.pls; do
+				# Parse each .pls file
+				while IFS= read -r line; do
+					# Check if the line contains a File or Title
+					if [[ $line == File* ]]; then
+						url=$(echo "$line" | cut -d'=' -f2)
+					elif [[ $line == Title* ]]; then
+						title=$(echo "$line" | cut -d'=' -f2)
+						# Append title and url to variable 
+		# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+						echo "$title ‡ $url" >> "$temp_file"
+					fi
+					done < "$pls_file"
+			done
+		fi
+	fi
+	if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
+		# get webradio presets from radiotray (prefix an emoji) 📻
+		if [ -f "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
+			${jq_bin} -r '
+				.[]
+				| .stations[]
+				| "\(.name) ‡ \(.url)"
+			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
+		# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+		fi
+	fi	
+	if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
+		# get genre 🎼
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre
+	fi
+	if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
+		# get album_artist  🎸
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
+	fi
+	if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
+		# get album 💿  (present as album by AlbumArtist)
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
+	fi
 
-#all of these need to be stored in a single data format
-#icon,source,title,full specification (url, text file to select on, whatever)
-# present in big ass scrollable list
-# throw into fzf
 
-#then use case to split out how to pass them along
-	
-#	(streamlink, url, whatever)
+	# present in big ass scrollable list
+	# throw into fzf
+
+	#then use case to split out how to pass them along
+		
+	#	(streamlink, url, whatever)
 	
 
 }
