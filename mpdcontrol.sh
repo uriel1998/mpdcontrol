@@ -162,7 +162,7 @@ read_arguments (){
 			--loud)
 				LOUD=1
 				;;
-			--playlists)
+			--playlist)
 				INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
 				;;
 			--stations)
@@ -245,6 +245,7 @@ main (){
 	local payload=""
 	local station_config=""
 	local play_after_add="0"
+	local clearmode_run="0"
 	#all of these need to be stored in a single data format
 	#icon,source,title,full specification (url, text file to select on, whatever)
 	
@@ -316,13 +317,15 @@ main (){
 
 	if [ -n "$fzf_result" ];then
 		info "Selection made; processing results"
-		# if the result from fzf is not null
-		clearmode
 		#then loop over the result, splitting out how to pass them along
 		# mdpq will add tracks last simply because of how mdpq works
 		while IFS= read -r result_line; do
 			if [ -z "$result_line" ]; then
 				continue
+			fi
+			if [ "$clearmode_run" -eq 0 ]; then
+				clearmode
+				clearmode_run="1"
 			fi
 
 			source=$(printf '%s\n' "$result_line" | cut -d',' -f2)
