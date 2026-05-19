@@ -289,9 +289,9 @@ main (){
 	local result_line=""
 	local source=""
 	local payload=""
-	local station_config=""
+	local chosen_station_config=""
 	local play_after_add="0"
-	local clearmode_run="0"
+	local -a station_configs=()
 	#all of these need to be stored in a single data format
 	#icon,source,title,full specification (url, text file to select on, whatever)
 	
@@ -363,47 +363,48 @@ main (){
 
 	if [ -n "$fzf_result" ];then
 		info "Selection made; processing results"
-		#then loop over the result, splitting out how to pass them along
-		# mdpq will add tracks last simply because of how mdpq works
+		clearmode
+
+		# first pass: process everything except station selections
 		while IFS= read -r result_line; do
 			if [ -z "$result_line" ]; then
 				continue
 			fi
-			if [ "$clearmode_run" -eq 0 ]; then
-				clearmode
-				clearmode_run="1"
-			fi
 
 			source=$(printf '%s\n' "$result_line" | cut -d',' -f2)
 			payload=$(printf '%s\n' "$result_line" | cut -d',' -f4-)
-			info "Handling source ${source}"
 
-				case "$source" in
-					radio)
-						mpc_action add "$payload"
-						play_after_add="1"
-						;;
-					playlist)
-						mpc_action load "$payload"
-						play_after_add="1"
-						;;
-					genre)
-						mpc_action findadd genre "$payload"
-						mpc_action shuffle
-						play_after_add="1"
-						;;
-					album)
-						mpc_action findadd album "$payload"
-						mpc_action random off
-						play_after_add="1"
-						;;
-					artist)
-						mpc_action findadd albumartist "$payload"
-						mpc_action shuffle
-						play_after_add="1"
-						;;
-				station) 
-					station_config="$payload"
+			case "$source" in
+				station)
+					station_configs+=("$payload")
+					;;
+				radio)
+					info "Handling source ${source}"
+					mpc_action add "$payload"
+					play_after_add="1"
+					;;
+				playlist)
+					info "Handling source ${source}"
+					mpc_action load "$payload"
+					play_after_add="1"
+					;;
+				genre)
+					info "Handling source ${source}"
+					mpc_action findadd genre "$payload"
+					mpc_action shuffle
+					play_after_add="1"
+					;;
+				album)
+					info "Handling source ${source}"
+					mpc_action findadd album "$payload"
+					mpc_action random off
+					play_after_add="1"
+					;;
+				artist)
+					info "Handling source ${source}"
+					mpc_action findadd albumartist "$payload"
+					mpc_action shuffle
+					play_after_add="1"
 					;;
 				*)
 					warn "Unhandled source type: $source"
@@ -411,12 +412,23 @@ main (){
 			esac
 		done <<< "$fzf_result"
 
-			if [ -n "$station_config" ]; then
-				${mpdq_bin} --config "$station_config"
-			elif [ "$play_after_add" == "1" ]; then
-				mpc_action play
-			fi
+		if [ "$play_after_add" == "1" ]; then
+			mpc_action play
 		fi
+
+		# second pass: if one or more station selections were made, choose one and run it last
+		if [ ${#station_configs[@]} -gt 1 ]; then
+			info "Multiple station selections made; choosing one at random"
+			chosen_station_config=$(printf '%s\n' "${station_configs[@]}" | shuf -n1)
+		elif [ ${#station_configs[@]} -eq 1 ]; then
+			chosen_station_config="${station_configs[0]}"
+		fi
+
+		if [ -n "$chosen_station_config" ]; then
+			info "Handling source station"
+			${mpdq_bin} --config "$chosen_station_config"
+		fi
+	fi
 	
 
 }
