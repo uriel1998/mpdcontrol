@@ -63,7 +63,7 @@ function error() {
 
 function set_host_arg() {
     # in case the password is already set in environment
-    if [ -n "$MPD_PASS" ] && [ "$MPD_HOST" != *"@"* ]; then
+    if [ -n "$MPD_PASS" ] && [[ "$MPD_HOST" != *"@"* ]]; then
         host_arg="$MPD_PASS@$MPD_HOST"
     else
         host_arg="$MPD_HOST"
@@ -80,7 +80,7 @@ function read_variables() {
     # If there's no config file or a line is malformed or missing, sub in the default value
     MPDBASE="$(echo "$config" | ${grep_bin} -e "^musicdir=" | cut -d = -f 2- ||
         cat "$XDG_CONFIG_HOME/mpd/mpd.conf" | ${grep_bin} "^music" | cut -d'"' -f2 ||
-        echo $HOME/Music)"
+        echo "$HOME/Music")"
     MPD_HOST="$(echo "$config" | ${grep_bin} -e "^mpdserver=" | cut -d = -f 2- || echo localhost)"
     MPD_PASS=$(echo "$config" | ${grep_bin} -e "^mpdpass=" | cut -d = -f 2-)
     MPD_PORT=$(echo "$config" | ${grep_bin} -e "^mpdport=" | cut -d = -f 2- || echo 6600)
@@ -188,9 +188,9 @@ main (){
 				.[]
 				| .stations[]
 				| "📻,radio,\(.name),\(.url)"
-			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" | 
-		# TODO MAKE THE VARIABLE WITH STATION EMJOI				
-		fi
+			' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
+			# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+			fi
 	fi	
 	if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
 		# get genre 🎼
