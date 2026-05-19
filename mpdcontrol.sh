@@ -176,21 +176,27 @@ read_arguments (){
 clearmode (){  
 	if [ "$ADDMODE" == "1" ];then
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
-	if [ "ADDMODE" == "2" ];then
+	fi
+	if [ "$ADDMODE" == "2" ];then
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
 		# if there is anything in genre "Bumper" then choose one randomly and add it.
-		SongStem=$(mpc --host "${MPD_HOST}" find genre "Bumper" | shuf -n1 )
+		SongStem=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find genre "Bumper" | shuf -n1)
 		if [ "$SongStem" != "" ];then
 			SongFile="$MPDBASE/$SongStem"
-			`mpc --host $MPD_HOST add "${SongStem}"`
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" add "${SongStem}"
 		fi            
 	fi
 }
     
  
 main (){
-	
+		
 	local fzf_result=""
+	local result_line=""
+	local source=""
+	local payload=""
+	local station_config=""
+	local play_after_add="0"
 	#all of these need to be stored in a single data format
 	#icon,source,title,full specification (url, text file to select on, whatever)
 	
@@ -259,40 +265,55 @@ main (){
 	if [ ${#fzf_result[@]} -gt 0 ];then
 		# if the result from fzf is not null
 		clearmode
-		#then use case to loop over the result, splitting out how to pass them along
-	
-	
-		# radio (listentodi AND radiotray)
-            mpc ${HostString} clear
-            mpc ${HostString} add "${chosen_url}"            
-            mpc ${HostString} play 
-            ;;
-		# playlist 
-            while IFS= read -r playlist; do
-                mpc --host "$MPD_HOST" load "$playlist" 
-                mpc --host "$MPD_HOST" play
-            done <<< "$result"	
-		# genre
-            while IFS= read -r genre; do
-                mpc --host "$MPD_HOST" findadd genre "$genre" 
-                mpc --host "$MPD_HOST" shuffle -q
-                mpc --host "$MPD_HOST" play
-            done <<< "$result"
-		# album
-            while IFS= read -r album; do
-                mpc --host "$MPD_HOST" findadd album "$album"
-                mpc --host "$MPD_HOST" random off
-                mpc --host "$MPD_HOST" play
-            done <<< "$result"
-		# artist
-            while IFS= read -r albumartist; do
-                mpc --host "$MPD_HOST" findadd albumartist "${albumartist}" 
-                mpc --host "$MPD_HOST" shuffle -q
-                mpc --host "$MPD_HOST" play
-            done <<< "$result"
-		# mpdq (there can ONLY BE ONE OPTION passed here; this will also be done LAST as a fallback)	
-			mpdq --config ${full path to config}
-fi
+		#then loop over the result, splitting out how to pass them along
+
+		while IFS= read -r result_line; do
+			if [ -z "$result_line" ]; then
+				continue
+			fi
+
+			source=$(printf '%s\n' "$result_line" | cut -d',' -f2)
+			payload=$(printf '%s\n' "$result_line" | cut -d',' -f4-)
+
+			case "$source" in
+				radio)
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" add "$payload"
+					play_after_add="1"
+					;;
+				playlist)
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" load "$payload"
+					play_after_add="1"
+					;;
+				genre)
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" findadd genre "$payload"
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" shuffle -q
+					play_after_add="1"
+					;;
+				album)
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" findadd album "$payload"
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" random off
+					play_after_add="1"
+					;;
+				artist)
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" findadd albumartist "$payload"
+					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" shuffle -q
+					play_after_add="1"
+					;;
+				station)
+					station_config="$payload"
+					;;
+				*)
+					warn "Unhandled source type: $source"
+					;;
+			esac
+		done <<< "$fzf_result"
+
+		if [ -n "$station_config" ]; then
+			${mpdq_bin} --config "$station_config"
+		elif [ "$play_after_add" == "1" ]; then
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" play
+		fi
+	fi
 	
 
 }
