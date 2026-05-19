@@ -28,14 +28,15 @@ elif [ -f "$ConfigDir/mpdq.ini" ];then
 	"$ConfigDir/mpdq.ini"
 fi
 
+# Globals
 # check for helper programs
 grep_bin=$(which grep)
 mpc_bin=$(which mpc)
 fzf_bin=$(which fzf)
 mpdq_bin=$(which mpdq)
 jq_bin=$(which jq)
-
-
+USE_SOURCES=""
+LISTEN_TO_DI_PLS=""
 ADDMODE="1"    
 host_arg=""
 LOUD="0"
@@ -72,55 +73,85 @@ function read_variables() {
     MPD_PASS=$(echo "$config" | ${grep_bin} -e "^mpdpass=" | cut -d = -f 2-)
     MPD_PORT=$(echo "$config" | ${grep_bin} -e "^mpdport=" | cut -d = -f 2- || echo 6600)
     set_host_arg
-	DI_PLS_DIR="$(echo "$config" | ${grep_bin} -e "^DI_PLS_DIR=" | cut -d = -f 2- || echo "$DI_PLS_DIR")"
+    # preferentially use argument
+    if [ -z "${DI_PLS_DIR}" ];then
+		DI_PLS_DIR="$(echo "$config" | ${grep_bin} -e "^DI_PLS_DIR=" | cut -d = -f 2- || echo "$DI_PLS_DIR")"
+	fi
 }
+
+read_arguments (){
+	#limit data arguments
+	# These set a global variable or array that is checked in 
+	# main
+	# --playlists -> include playlists from mpc
+	# --stations -> include stations from mpdq
+	# --listentodi -> include playlists from DI_PLS_DIR
+	# --radiotray -> include from radiotray
+	# --genre -> include genres
+	# --album -> include artist	
+	# --album -> include albums
+	# --all -> include all
+	
+	# --playlist-dir -> specify DI_PLS_DIR
+}
+
 
 main (){
 
-
-
-# get playlists (prefix an emoji) 📋
-mpc --host "${host_arg}" --port "${MPD_PORT}" lsplaylists
-# get stations (prefix an emoji) 🎛️
-mpdq -e (need to trim path and ext)
-# get listen to di or other playlist (prefix an emoji) 📡
-# Loop through all .pls files in the specified directory
-if [ -d "${DI_PLS_DIR}" ];then 
-	for pls_file in "${DI_PLS_DIR}"/*.pls; do
-		# Parse each .pls file
-		while IFS= read -r line; do
-			# Check if the line contains a File or Title
-			if [[ $line == File* ]]; then
-				url=$(echo "$line" | cut -d'=' -f2)
-			elif [[ $line == Title* ]]; then
-				title=$(echo "$line" | cut -d'=' -f2)
-				# Append title and url to variable 
-# TODO MAKE THE VARIABLE WITH STATION EMJOI				
-				echo "$title ‡ $url" >> "$temp_file"
-			fi
-		done < "$pls_file"
-	done
-# get webradio presets from radiotray (prefix an emoji) 📻
-if [ -d "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
-	${jq_bin} -r '
-		.[]
-		| .stations[]
-		| "\(.name) ‡ \(.url)"
-	' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
-# TODO MAKE THE VARIABLE WITH STATION EMJOI				
-
-# get genre 🎼
-mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre
-# get album_artist  🎸
-mpc --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
-# get album 💿  (present as album by AlbumArtist)
-mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
-
+if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
+	# get playlists (prefix an emoji) 📋
+	mpc --host "${host_arg}" --port "${MPD_PORT}" lsplaylists
+fi
+if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
+	# get stations (prefix an emoji) 🎛️
+	mpdq -e (need to trim path and ext)
+fi
+if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
+	# get listen to di or other playlist (prefix an emoji) 📡
+	# Loop through all .pls files in the specified directory
+	if [ -d "${DI_PLS_DIR}" ];then 
+		for pls_file in "${DI_PLS_DIR}"/*.pls; do
+			# Parse each .pls file
+			while IFS= read -r line; do
+				# Check if the line contains a File or Title
+				if [[ $line == File* ]]; then
+					url=$(echo "$line" | cut -d'=' -f2)
+				elif [[ $line == Title* ]]; then
+					title=$(echo "$line" | cut -d'=' -f2)
+					# Append title and url to variable 
+	# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+					echo "$title ‡ $url" >> "$temp_file"
+				fi
+			done < "$pls_file"
+		done
+fi
+if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
+	# get webradio presets from radiotray (prefix an emoji) 📻
+	if [ -d "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
+		${jq_bin} -r '
+			.[]
+			| .stations[]
+			| "\(.name) ‡ \(.url)"
+		' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
+	# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+fi	
+if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
+	# get genre 🎼
+	mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre
+fi
+if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
+	# get album_artist  🎸
+	mpc --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
+fi
+if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
+	# get album 💿  (present as album by AlbumArtist)
+	mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
+fi
 
 #all of these need to be stored in a single data format
 #icon,source,title,full specification (url, text file to select on, whatever)
 # present in big ass scrollable list
-# throw into fzf|rofi | php ?? 
+# throw into fzf
 
 #then use case to split out how to pass them along
 	
@@ -131,5 +162,7 @@ mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre
 
 ##############################################################entrypoint
 
+
+read_arguments
 read_variables
 main "${@}"
