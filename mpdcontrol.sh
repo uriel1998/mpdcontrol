@@ -49,6 +49,18 @@ function loud() {
     fi
 }
 
+function info() {
+	loud "[info] $@"
+}
+
+function warn() {
+	loud "[warn] $@"
+}
+
+function error() {
+	loud "[error] $@"
+}
+
 function set_host_arg() {
     # in case the password is already set in environment
     if [ -n "$MPD_PASS" ] && [ "$MPD_HOST" != *"@"* ]; then
@@ -62,7 +74,7 @@ function read_variables() {
     if [ -f "$ConfigFile" ];then
         config=$(cat "$ConfigFile")
     else
-        loud "Configuration file not found; using defaults."
+        warn "Configuration file not found; using defaults."
     fi
     
     # If there's no config file or a line is malformed or missing, sub in the default value
@@ -122,13 +134,13 @@ read_arguments (){
 			--playlist-dir)
 				shift
 				if [ -z "$1" ]; then
-					echo "Missing argument for --playlist-dir" >&2
+					error "Missing argument for --playlist-dir"
 					exit 1
 				fi
 				DI_PLS_DIR="$1"
 				;;
 			*)
-				echo "Unknown argument: $1" >&2
+				error "Unknown argument: $1"
 				exit 1
 				;;
 		esac
