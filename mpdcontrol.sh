@@ -178,7 +178,13 @@ clearmode (){
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
 	fi
 	if [ "$ADDMODE" == "2" ];then
-		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
+		# if it is a url, it won't move off of it.
+		current_file=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" --format %file% current)
+		if [[ "$current_file" == http://* || "$current_file" == https://* ]]; then
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
+		else
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
+		fi
 		# if there is anything in genre "Bumper" then choose one randomly and add it.
 		SongStem=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find genre "Bumper" | shuf -n1)
 		if [ "$SongStem" != "" ];then
@@ -266,7 +272,7 @@ main (){
 		# if the result from fzf is not null
 		clearmode
 		#then loop over the result, splitting out how to pass them along
-
+		# mdpq will add tracks last simply because of how mdpq works
 		while IFS= read -r result_line; do
 			if [ -z "$result_line" ]; then
 				continue
@@ -299,7 +305,7 @@ main (){
 					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" shuffle -q
 					play_after_add="1"
 					;;
-				station)
+				station) 
 					station_config="$payload"
 					;;
 				*)
