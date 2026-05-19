@@ -100,11 +100,11 @@ main (){
 
 if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
 	# get playlists (prefix an emoji) 📋
-	mpc --host "${host_arg}" --port "${MPD_PORT}" lsplaylists
+	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists
 fi
 if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
 	# get stations (prefix an emoji) 🎛️
-	mpdq -e (need to trim path and ext)
+	${mpdq_bin} -e (need to trim path and ext)
 fi
 if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
 	# get listen to di or other playlist (prefix an emoji) 📡
@@ -137,15 +137,15 @@ if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then
 fi	
 if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
 	# get genre 🎼
-	mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre
+	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre
 fi
 if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
 	# get album_artist  🎸
-	mpc --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
+	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist group genre 
 fi
 if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
 	# get album 💿  (present as album by AlbumArtist)
-	mpc --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
+	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album group genre 
 fi
 
 #all of these need to be stored in a single data format
