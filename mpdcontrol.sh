@@ -35,17 +35,17 @@ mpc_bin=$(which mpc)
 fzf_bin=$(which fzf)
 mpdq_bin=$(which mpdq)
 jq_bin=$(which jq)
-USE_SOURCES=""
+INCLUDE_SOURCES=""
 LISTEN_TO_DI_PLS=""
 ADDMODE="1"    
 host_arg=""
 LOUD="0"
 
 ###############################################################functions
-
 function loud() {
+	# loud outputs on stderr
     if [ $LOUD -eq 1 ];then
-        echo "$@"
+        echo "$@" 1>&2
     fi
 }
 
@@ -88,11 +88,52 @@ read_arguments (){
 	# --listentodi -> include playlists from DI_PLS_DIR
 	# --radiotray -> include from radiotray
 	# --genre -> include genres
-	# --album -> include artist	
+	# --artist -> include artist
 	# --album -> include albums
 	# --all -> include all, appends string for all to INCLUDE SOURCES
 	
 	# --playlist-dir -> specify DI_PLS_DIR
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--playlists)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
+				;;
+			--stations)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}stations "
+				;;
+			--listentodi)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}listentodi "
+				;;
+			--radiotray)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}radiotray "
+				;;
+			--genre)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}genre "
+				;;
+			--artist)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}artist "
+				;;
+			--album)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}album "
+				;;
+			--all)
+				INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists stations listentodi radiotray genre artist album "
+				;;
+			--playlist-dir)
+				shift
+				if [ -z "$1" ]; then
+					echo "Missing argument for --playlist-dir" >&2
+					exit 1
+				fi
+				DI_PLS_DIR="$1"
+				;;
+			*)
+				echo "Unknown argument: $1" >&2
+				exit 1
+				;;
+		esac
+		shift
+	done
 }
 
 
@@ -102,9 +143,10 @@ if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
 	# get playlists (prefix an emoji) 📋
 	${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists
 fi
-if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
+if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
 	# get stations (prefix an emoji) 🎛️
-	${mpdq_bin} -e (need to trim path and ext)
+	# TODO trim path and extension from station output
+	${mpdq_bin} -e
 fi
 if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
 	# get listen to di or other playlist (prefix an emoji) 📡
@@ -122,18 +164,20 @@ if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
 	# TODO MAKE THE VARIABLE WITH STATION EMJOI				
 					echo "$title ‡ $url" >> "$temp_file"
 				fi
-			done < "$pls_file"
+				done < "$pls_file"
 		done
+	fi
 fi
 if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
 	# get webradio presets from radiotray (prefix an emoji) 📻
-	if [ -d "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
+	if [ -f "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
 		${jq_bin} -r '
 			.[]
 			| .stations[]
 			| "\(.name) ‡ \(.url)"
 		' "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json"
 	# TODO MAKE THE VARIABLE WITH STATION EMJOI				
+	fi
 fi	
 if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
 	# get genre 🎼
@@ -163,6 +207,6 @@ fi
 ##############################################################entrypoint
 
 
-read_arguments
+read_arguments "$@"
 read_variables
 main "${@}"
