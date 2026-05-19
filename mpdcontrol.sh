@@ -75,6 +75,14 @@ function append_fzf_lines() {
 	done
 }
 
+function mpc_action() {
+	if [ "$LOUD" -eq 1 ]; then
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" "$@"
+	else
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" -q "$@"
+	fi
+}
+
 function set_host_arg() {
     # in case the password is already set in environment
     if [ -n "$MPD_PASS" ] && [[ "$MPD_HOST" != *"@"* ]]; then
@@ -200,7 +208,7 @@ clearmode (){
 	case "$ADDMODE" in
 		1)
 			info "Clearing current playlist"
-			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
+			mpc_action clear
 			;;
 		2)
 			info "Cropping current playlist and adding bumper if available"
@@ -208,15 +216,15 @@ clearmode (){
 			current_file=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" --format %file% current)
 			if [[ "$current_file" == http://* || "$current_file" == https://* ]]; then
 				info "Current track is a stream URL; clearing instead of cropping"
-				${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
+				mpc_action clear
 			else
-				${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
+				mpc_action crop
 			fi
 			# if there is anything in genre "Bumper" then choose one randomly and add it.
 			SongStem=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find genre "Bumper" | shuf -n1)
 			if [ "$SongStem" != "" ];then
 				SongFile="$MPDBASE/$SongStem"
-				${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" add "${SongStem}"
+				mpc_action add "${SongStem}"
 			fi
 			;;
 		0)
@@ -321,30 +329,30 @@ main (){
 			payload=$(printf '%s\n' "$result_line" | cut -d',' -f4-)
 			info "Handling source ${source}"
 
-			case "$source" in
-				radio)
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" add "$payload"
-					play_after_add="1"
-					;;
-				playlist)
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" load "$payload"
-					play_after_add="1"
-					;;
-				genre)
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" findadd genre "$payload"
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" shuffle -q
-					play_after_add="1"
-					;;
-				album)
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" findadd album "$payload"
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" random off
-					play_after_add="1"
-					;;
-				artist)
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" findadd albumartist "$payload"
-					${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" shuffle -q
-					play_after_add="1"
-					;;
+				case "$source" in
+					radio)
+						mpc_action add "$payload"
+						play_after_add="1"
+						;;
+					playlist)
+						mpc_action load "$payload"
+						play_after_add="1"
+						;;
+					genre)
+						mpc_action findadd genre "$payload"
+						mpc_action shuffle
+						play_after_add="1"
+						;;
+					album)
+						mpc_action findadd album "$payload"
+						mpc_action random off
+						play_after_add="1"
+						;;
+					artist)
+						mpc_action findadd albumartist "$payload"
+						mpc_action shuffle
+						play_after_add="1"
+						;;
 				station) 
 					station_config="$payload"
 					;;
@@ -354,12 +362,12 @@ main (){
 			esac
 		done <<< "$fzf_result"
 
-		if [ -n "$station_config" ]; then
-			${mpdq_bin} --config "$station_config"
-		elif [ "$play_after_add" == "1" ]; then
-			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" play
+			if [ -n "$station_config" ]; then
+				${mpdq_bin} --config "$station_config"
+			elif [ "$play_after_add" == "1" ]; then
+				mpc_action play
+			fi
 		fi
-	fi
 	
 
 }
