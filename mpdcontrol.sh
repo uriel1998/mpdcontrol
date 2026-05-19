@@ -37,7 +37,11 @@ mpdq_bin=$(which mpdq)
 jq_bin=$(which jq)
 INCLUDE_SOURCES=""
 LISTEN_TO_DI_PLS=""
-ADDMODE="1"    
+# ADDMODE can be 
+# 0 - add
+# 1 - clear
+# 2 - crop (with bumper)
+ADDMODE="2"     
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -169,8 +173,24 @@ read_arguments (){
 	done
 }
 
+clearmode (){  
+	if [ "$ADDMODE" == "1" ];then
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" clear -q
+	if [ "ADDMODE" == "2" ];then
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" crop -q
+		# if there is anything in genre "Bumper" then choose one randomly and add it.
+		SongStem=$(mpc --host "${MPD_HOST}" find genre "Bumper" | shuf -n1 )
+		if [ "$SongStem" != "" ];then
+			SongFile="$MPDBASE/$SongStem"
+			`mpc --host $MPD_HOST add "${SongStem}"`
+		fi            
+	fi
+}
+    
  
 main (){
+	
+	local fzf_result=""
 	#all of these need to be stored in a single data format
 	#icon,source,title,full specification (url, text file to select on, whatever)
 	
@@ -230,15 +250,49 @@ main (){
 	# present in big ass scrollable list
 	# throw into fzf
 	if [ ${#FZF_LINES[@]} -gt 0 ]; then
-		printf '%s\n' "${FZF_LINES[@]}" |
+		fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
 			awk -F, '{print $1 " - " $3 "\t" $0}' |
 			${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
-			cut -f2-
+			cut -f2-)
 	fi
 
-	#then use case to split out how to pass them along
-		
-	#	(streamlink, url, whatever)
+	if [ ${#fzf_result[@]} -gt 0 ];then
+		# if the result from fzf is not null
+		clearmode
+		#then use case to loop over the result, splitting out how to pass them along
+	
+	
+		# radio (listentodi AND radiotray)
+            mpc ${HostString} clear
+            mpc ${HostString} add "${chosen_url}"            
+            mpc ${HostString} play 
+            ;;
+		# playlist 
+            while IFS= read -r playlist; do
+                mpc --host "$MPD_HOST" load "$playlist" 
+                mpc --host "$MPD_HOST" play
+            done <<< "$result"	
+		# genre
+            while IFS= read -r genre; do
+                mpc --host "$MPD_HOST" findadd genre "$genre" 
+                mpc --host "$MPD_HOST" shuffle -q
+                mpc --host "$MPD_HOST" play
+            done <<< "$result"
+		# album
+            while IFS= read -r album; do
+                mpc --host "$MPD_HOST" findadd album "$album"
+                mpc --host "$MPD_HOST" random off
+                mpc --host "$MPD_HOST" play
+            done <<< "$result"
+		# artist
+            while IFS= read -r albumartist; do
+                mpc --host "$MPD_HOST" findadd albumartist "${albumartist}" 
+                mpc --host "$MPD_HOST" shuffle -q
+                mpc --host "$MPD_HOST" play
+            done <<< "$result"
+		# mpdq (there can ONLY BE ONE OPTION passed here; this will also be done LAST as a fallback)	
+			mpdq --config ${full path to config}
+fi
 	
 
 }
