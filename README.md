@@ -1,22 +1,30 @@
 # mpdcontrol
 
-`mpdcontrol.sh` builds an `fzf` picker from several music and radio sources, then sends the selected result to MPD or `mpdq`.
+Sometimes I want to listen to an album, or two or three, or a genre *and* an artist, or a stream and then let `mpdq` take over, or, or... and I just want to have one simple interface that can be as flexible as my music taste might be.
+
+Hence, this program.
+
+VIDEO TO GO HERE
+
+`mpdcontrol.sh` (or `mpdc`) builds an `fzf` picker from several music and radio sources, then sends the selected result to MPD or `mpdq`.
 
 It can combine:
 
 - MPD playlists
 - `mpdq` station configs
-- `.pls` radio entries from `simple_listen_to_di`
+- `.pls` radio entries from `simple_listen_to_di` (or any other similarly formatted)
 - `radiotray-ng` bookmarks
 - MPD genres
 - MPD artists
 - MPD albums
 
-The chooser shows `icon - title`, but the script keeps the full source record internally so it can dispatch the correct action for each selection.
+There's icons in the picker to indicate what sort of thing you're selecting, and then it'll queue up the appropriate things.  Or you can have it instantly change clear whatever's playing.  Or have it change after the currently-playing track (unless that's a stream, since streams often don't end).  
+
+Also, if you have anything in the "Bumper" genre, like "radio changing static" sounds, it'll play that to signify the new change.  It amuses me.
 
 ## Dependencies
 
-System packages installable with `apt`:
+System packages installable with `apt` (I'm using Debian trixie):
 
 ```bash
 sudo apt update
@@ -25,6 +33,7 @@ sudo apt install -y bash mpd mpc fzf jq grep sed coreutils mawk
 
 Notes:
 
+- `mpd` is what we're playing music through, though if you have it installed as a server elsewhere, this is unneeded.
 - `mpc` is the MPD client the script uses for querying and queue actions.
 - `fzf` provides the interactive selector.
 - `jq` is used for `radiotray-ng` bookmark parsing.
@@ -37,7 +46,7 @@ External tools referenced by this project:
 
 `mpdq` is required for `--stations`.
 
-`simple_listen_to_di` is optional, but needed if you want `--listentodi`.
+`simple_listen_to_di` is optional, but has a script in it needed if you want the playlists for `--listentodi`.
 
 ## Installation
 
@@ -82,7 +91,7 @@ ADDMODE=2
 
 - `0`: add without clearing
 - `1`: clear before adding
-- `2`: crop before adding, with bumper logic
+- `2`: crop before adding, with a randomly selected track from the genre "Bumper" played first.
 
 ## Usage
 
@@ -108,12 +117,6 @@ Choose from `mpdq` stations:
 
 ```bash
 ./mpdcontrol.sh --stations
-```
-
-Choose from mixed sources with multiselect:
-
-```bash
-./mpdcontrol.sh --all
 ```
 
 If multiple `station` entries are selected in the same run, the script keeps only one of them and chooses it at random.
@@ -150,12 +153,6 @@ Enable verbose logging:
 
 ## Behavior
 
-Each selectable row is stored internally as:
-
-```text
-icon,source,title,payload
-```
-
 The script dispatches by `source`:
 
 - `playlist` -> `mpc load`
@@ -165,7 +162,7 @@ The script dispatches by `source`:
 - `radio` -> `mpc add <url>`
 - `station` -> `mpdq --config <path>`
 
-Multi-select behavior:
+If you choose more than one thing, then:
 
 - `clearmode` runs once before selection processing starts
 - non-`station` selections are processed first
