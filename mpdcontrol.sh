@@ -25,8 +25,6 @@ fi
 # check for existence is in read_variables
 if [ -f "$ConfigDir/mpdc.ini" ];then
 	ConfigFile="$ConfigDir/mpdc.ini"
-elif [ -f "$ConfigDir/mpdq.ini" ];then
-	ConfigFile="$ConfigDir/mpdq.ini"
 fi
 
 # Globals
@@ -81,6 +79,50 @@ function mpc_action() {
 	else
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" -q "$@"
 	fi
+}
+
+function show_help() {
+	cat <<'EOF'
+Usage: mpdcontrol.sh [options]
+
+Build an fzf chooser from MPD, mpdq, and radio sources, then act on the
+selected result(s).
+
+Source Options:
+  --playlist, --playlists  Include MPD playlists
+  --stations               Include mpdq station configs
+  --listentodi             Include .pls radio entries from DI_PLS_DIR
+  --radiotray              Include radiotray-ng bookmarks
+  --genre                  Include MPD genres
+  --artist                 Include MPD artists
+  --album                  Include MPD albums
+  --all                    Include all supported sources
+
+Mode Options:
+  --clear                  Clear playlist before adding selections
+  --crop                   Crop playlist before adding selections, with bumper logic
+  --loud                   Enable informational logging and non-quiet mpc actions
+
+Config Options:
+  --playlist-dir PATH      Override DI_PLS_DIR for --listentodi
+
+Help:
+  -h, --help               Show this help text and exit
+
+Config Resolution:
+  1. Environment variables already set in the shell
+  2. ./mpdc.ini
+  3. XDG config location
+  4. Built-in defaults
+
+Relevant config keys:
+  mpdserver
+  mpdport
+  mpdpass
+  musicdir
+  DI_PLS_DIR
+  ADDMODE
+EOF
 }
 
 function set_host_arg() {
@@ -152,19 +194,23 @@ read_arguments (){
 	
 	# --playlist-dir -> specify DI_PLS_DIR
 	while [ $# -gt 0 ]; do
-		case "$1" in
-			--clear)
-				ADDMODE=1
-				;;
+			case "$1" in
+				-h|--help)
+					show_help
+					exit 0
+					;;
+				--clear)
+					ADDMODE=1
+					;;
 			--crop)
 				ADDMODE=2
 				;;
 			--loud)
 				LOUD=1
 				;;
-			--playlist)
-				INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
-				;;
+				--playlist|--playlists)
+					INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
+					;;
 			--stations)
 				INCLUDE_SOURCES="${INCLUDE_SOURCES}stations "
 				;;
