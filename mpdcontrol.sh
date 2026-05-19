@@ -90,9 +90,21 @@ function read_variables() {
     MPDBASE="$(echo "$config" | ${grep_bin} -e "^musicdir=" | cut -d = -f 2- ||
         cat "$XDG_CONFIG_HOME/mpd/mpd.conf" | ${grep_bin} "^music" | cut -d'"' -f2 ||
         echo "$HOME/Music")"
-    MPD_HOST="$(echo "$config" | ${grep_bin} -e "^mpdserver=" | cut -d = -f 2- || echo localhost)"
-    MPD_PASS=$(echo "$config" | ${grep_bin} -e "^mpdpass=" | cut -d = -f 2-)
-    MPD_PORT=$(echo "$config" | ${grep_bin} -e "^mpdport=" | cut -d = -f 2- || echo 6600)
+    if [ -z "$MPD_HOST" ]; then
+        MPD_HOST="$(echo "$config" | ${grep_bin} -e "^mpdserver=" | cut -d = -f 2-)"
+    fi
+    if [ -z "$MPD_HOST" ]; then
+        MPD_HOST="localhost"
+    fi
+    if [ -z "$MPD_PASS" ]; then
+        MPD_PASS=$(echo "$config" | ${grep_bin} -e "^mpdpass=" | cut -d = -f 2-)
+    fi
+    if [ -z "$MPD_PORT" ]; then
+        MPD_PORT=$(echo "$config" | ${grep_bin} -e "^mpdport=" | cut -d = -f 2-)
+    fi
+    if [ -z "$MPD_PORT" ]; then
+        MPD_PORT="6600"
+    fi
     set_host_arg
     # preferentially use argument
     if [ -z "${DI_PLS_DIR}" ];then
@@ -164,14 +176,14 @@ main (){
 	
 	if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
 		# get playlists  
-		append_fzf_lines < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists | sed 's/.*/&,&/' | sed 's/^/🎛️,playlist,/g')
+		append_fzf_lines < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists | sed 's/.*/&,&/' | sed 's/^/📋,playlist,/g')
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
 		# get stations  
 		append_fzf_lines < <(${mpdq_bin} -e | sed -n '/\/default[^/]*\.cfg$/d; h; s#.*/##; s/\.cfg$//; s#^#🎛️,station,#; G; s/\n/,/; p')
 	fi
 	if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
-		# get listen to di or other playlist (prefix an emoji) 📡
+		# get listen to di or other playlist (prefix an emoji)  
 		# Loop through all .pls files in the specified directory
 		if [ -d "${DI_PLS_DIR}" ];then 
 			for pls_file in "${DI_PLS_DIR}"/*.pls; do
@@ -184,7 +196,7 @@ main (){
 							title=$(echo "$line" | cut -d'=' -f2)
 							# Append title and url to variable 
 							# THIS WILL GO TO OUR LIST ARRAY/VARIABLE			
-							FZF_LINES+=("📻,radio,$title,$url")
+							FZF_LINES+=("📡,radio,$title,$url")
 						fi
 						done < "$pls_file"
 				done
@@ -218,7 +230,10 @@ main (){
 	# present in big ass scrollable list
 	# throw into fzf
 	if [ ${#FZF_LINES[@]} -gt 0 ]; then
-		printf '%s\n' "${FZF_LINES[@]}" | ${fzf_bin}
+		printf '%s\n' "${FZF_LINES[@]}" |
+			awk -F, '{print $1 " - " $3 "\t" $0}' |
+			${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
+			cut -f2-
 	fi
 
 	#then use case to split out how to pass them along
