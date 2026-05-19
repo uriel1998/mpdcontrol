@@ -122,6 +122,11 @@ Relevant config keys:
   musicdir
   DI_PLS_DIR
   ADDMODE
+
+Multi-select behavior:
+  Non-station selections are processed first
+  Station selections are deferred until last
+  If multiple stations are selected, one station is chosen at random
 EOF
 }
 

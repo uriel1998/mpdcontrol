@@ -110,6 +110,14 @@ Choose from `mpdq` stations:
 ./mpdcontrol.sh --stations
 ```
 
+Choose from mixed sources with multiselect:
+
+```bash
+./mpdcontrol.sh --all
+```
+
+If multiple `station` entries are selected in the same run, the script keeps only one of them and chooses it at random.
+
 Choose from ListenToDI `.pls` files in a custom directory:
 
 ```bash
@@ -157,4 +165,9 @@ The script dispatches by `source`:
 - `radio` -> `mpc add <url>`
 - `station` -> `mpdq --config <path>`
 
-For multi-select, `clearmode` runs once before the first selected item is processed.
+Multi-select behavior:
+
+- `clearmode` runs once before selection processing starts
+- non-`station` selections are processed first
+- `station` selections are deferred until the end
+- if more than one `station` is selected, one station is chosen at random and passed to `mpdq`
