@@ -113,6 +113,12 @@ Choose genres and albums, clearing the queue first:
 ./mpdcontrol.sh --genre --album --clear
 ```
 
+Choose items and append them without clearing or cropping first:
+
+```bash
+./mpdcontrol.sh --genre --artist --append
+```
+
 Choose from `mpdq` stations:
 
 ```bash
@@ -144,6 +150,7 @@ Enable verbose logging:
 --artist
 --album
 --all
+--append
 --clear
 --crop
 --playlist-dir PATH

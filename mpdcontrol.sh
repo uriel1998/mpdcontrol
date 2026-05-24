@@ -130,6 +130,7 @@ Source Options:
   --all                    Include all supported sources
 
 Mode Options:
+  --append                 Append selections without clearing or cropping
   --clear                  Clear playlist before adding selections
   --crop                   Crop playlist before adding selections, with bumper logic
   --loud                   Enable informational logging and non-quiet mpc actions
@@ -234,6 +235,9 @@ read_arguments (){
 				-h|--help)
 					show_help
 					exit 0
+					;;
+				--append)
+					ADDMODE=0
 					;;
 				--clear)
 					ADDMODE=1
