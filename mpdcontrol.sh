@@ -41,6 +41,7 @@ LISTEN_TO_DI_PLS=""
 # 1 - clear
 # 2 - crop (with bumper)
 ADDMODE=""
+ADDMODE_SET_BY_ARG="0"
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -207,7 +208,7 @@ function read_variables() {
     if [ -z "${DI_PLS_DIR}" ];then
 		DI_PLS_DIR="$(echo "$config" | ${grep_bin} -e "^DI_PLS_DIR=" | cut -d = -f 2-)"
 	fi
-	    if [ -z "${ADDMODE}" ];then
+	    if [ "$ADDMODE_SET_BY_ARG" -ne 1 ];then
 			ADDMODE="$(echo "$config" | ${grep_bin} -e "^ADDMODE=" | cut -d = -f 2-)"
 		fi
 	    if [ -z "${ADDMODE}" ];then
@@ -238,16 +239,19 @@ read_arguments (){
 					;;
 				--append)
 					ADDMODE=0
+					ADDMODE_SET_BY_ARG=1
 					;;
 				--clear)
 					ADDMODE=1
+					ADDMODE_SET_BY_ARG=1
 					;;
-			--crop)
-				ADDMODE=2
-				;;
-			--loud)
-				LOUD=1
-				;;
+				--crop)
+					ADDMODE=2
+					ADDMODE_SET_BY_ARG=1
+					;;
+				--loud)
+					LOUD=1
+					;;
 				--playlist|--playlists)
 					INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
 					;;
