@@ -318,7 +318,7 @@ clearmode (){
 			fi
 			;;
 		0)
-			:
+			info "Doing nothing to crop"
 			;;
 		*)
 			warn "Unknown ADDMODE '$ADDMODE'; defaulting to add mode."
@@ -446,7 +446,9 @@ main (){
 				genre)
 					info "Handling source ${source}"
 					mpc_action findadd genre "$payload"
-					mpc_action shuffle
+					if [[ "${ADDMODE}" == "1" ]];then
+						mpc_action shuffle
+					fi
 					play_after_add="1"
 					;;
 				album)
@@ -458,7 +460,9 @@ main (){
 				artist)
 					info "Handling source ${source}"
 					mpc_action findadd albumartist "$payload"
-					mpc_action shuffle
+					if [[ "${ADDMODE}" == "1" ]];then
+						mpc_action shuffle
+					fi
 					play_after_add="1"
 					;;
 				*)
