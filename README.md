@@ -4,7 +4,7 @@ Sometimes I want to listen to an album, or two or three, or a genre *and* an art
 
 Hence, this program.
 
-VIDEO TO GO HERE
+![mpdc in action](https://raw.githubusercontent.com/uriel1998/mpdcontrol/master/mpdc.gif "mpdc in action")
 
 `mpdcontrol.sh` (or `mpdc`) builds an `fzf` picker from several music and radio sources, then sends the selected result to MPD or `mpdq`.
 
