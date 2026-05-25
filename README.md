@@ -6,6 +6,8 @@ Hence, this program.
 
 ![mpdc in action](https://raw.githubusercontent.com/uriel1998/mpdcontrol/master/mpdc.gif "mpdc in action")
 
+(The very pretty interface on the left is [rmpc, the Rusty Music Player Client.](https://rmpc.mierak.dev/))
+
 `mpdcontrol.sh` (or `mpdc`) builds an `fzf` picker from several music and radio sources, then sends the selected result to MPD or `mpdq`.
 
 It can combine:
