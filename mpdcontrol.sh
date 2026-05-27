@@ -43,6 +43,10 @@ LISTEN_TO_DI_PLS=""
 ADDMODE=""
 ADDMODE_SET_BY_ARG="0"
 EMIT_MODE=""
+INPUT_JSON=""
+INPUT_SET="0"
+INPUT_SOURCE=""
+INPUT_PAYLOAD=""
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -130,6 +134,114 @@ function emit_json_lines() {
 	done
 }
 
+function parse_input_json() {
+	local input_source=""
+	local input_payload=""
+
+	if IFS=$'\t' read -r input_source input_payload < <(${jq_bin} -er '[.source, .payload] | @tsv' <<< "$INPUT_JSON" 2>/dev/null); then
+		:
+	else
+		input_source="$INPUT_SOURCE"
+		input_payload="$INPUT_PAYLOAD"
+	fi
+
+	if [ -z "$input_source" ]; then
+		error "Missing source in --input"
+		exit 1
+	fi
+
+	if [ -z "$input_payload" ]; then
+		error "Missing payload in --input"
+		exit 1
+	fi
+
+	append_record "" "$input_source" "$input_payload" "$input_payload"
+}
+
+function process_selection_result() {
+	local fzf_result="$1"
+	local result_line=""
+	local source=""
+	local payload=""
+	local chosen_station_config=""
+	local play_after_add="0"
+	local -a station_configs=()
+
+	if [ -z "$fzf_result" ];then
+		return 0
+	fi
+
+	info "Selection made; processing results"
+	clearmode
+
+	# first pass: process everything except station selections
+	while IFS= read -r result_line; do
+		if [ -z "$result_line" ]; then
+			continue
+		fi
+
+		IFS="$RECORD_SEP" read -r _icon source _title payload <<< "$result_line"
+
+		case "$source" in
+			station)
+				station_configs+=("$payload")
+				;;
+			radio)
+				info "Handling source ${source}"
+				mpc_action add "$payload"
+				play_after_add="1"
+				;;
+			playlist)
+				info "Handling source ${source}"
+				mpc_action load "$payload"
+				play_after_add="1"
+				;;
+			genre)
+				info "Handling source ${source}"
+				mpc_action findadd genre "$payload"
+				if [[ "${ADDMODE}" == "1" ]];then
+					mpc_action shuffle
+				fi
+				play_after_add="1"
+				;;
+			album)
+				info "Handling source ${source}"
+				mpc_action findadd album "$payload"
+				mpc_action random off
+				play_after_add="1"
+				;;
+			artist)
+				info "Handling source ${source}"
+				mpc_action findadd albumartist "$payload"
+				if [[ "${ADDMODE}" == "1" ]];then
+					mpc_action shuffle
+				fi
+				play_after_add="1"
+				;;
+			*)
+				warn "Unhandled source type: $source"
+				;;
+		esac
+	done <<< "$fzf_result"
+
+	if [ "$play_after_add" == "1" ]; then
+		mpc_action play
+	fi
+
+	# second pass: if one or more station selections were made, choose one and run it last
+	if [ ${#station_configs[@]} -gt 1 ]; then
+		info "Multiple station selections made; choosing one at random"
+		chosen_station_config=$(printf '%s\n' "${station_configs[@]}" | shuf -n1)
+	elif [ ${#station_configs[@]} -eq 1 ]; then
+		chosen_station_config="${station_configs[0]}"
+	fi
+
+	if [ -n "$chosen_station_config" ]; then
+		info "Handling source station"
+		${mpdq_bin} --config "$chosen_station_config"
+	fi
+}
+
 function mpc_action() {
 	if [ "$LOUD" -eq 1 ]; then
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" "$@"
@@ -166,6 +278,7 @@ Config Options:
 
 Help:
   -e, --emit               Emit the would-be fzf option display list to stdout and exit
+  -i, --input JSON         Use one JSON source/payload input and skip source selection
   --emit-raw               Emit raw internal records to stdout and exit
   --emit-json              Emit JSON lines to stdout and exit
   -h, --help               Show this help text and exit
@@ -260,13 +373,36 @@ read_arguments (){
 	
 	# --playlist-dir -> specify DI_PLS_DIR
 	while [ $# -gt 0 ]; do
-				case "$1" in
-					-e|--emit)
-						EMIT_MODE="display"
-						;;
-					--emit-raw)
-						EMIT_MODE="raw"
-						;;
+					case "$1" in
+						-e|--emit)
+							EMIT_MODE="display"
+							;;
+						-i|--input)
+							if [ "$INPUT_SET" -eq 1 ]; then
+								error "Only one --input value is allowed per run"
+								exit 1
+							fi
+							shift
+							if [ -z "$1" ]; then
+								error "Missing argument for --input"
+								exit 1
+							fi
+							INPUT_JSON="$1"
+							if [[ "$1" == source:* ]]; then
+								INPUT_SOURCE="${1#source:}"
+								shift
+								if [ -z "$1" ] || [[ "$1" != payload:* ]]; then
+									error "Expected payload:... after source:... for --input"
+									exit 1
+								fi
+								INPUT_PAYLOAD="${1#payload:}"
+								INPUT_JSON=""
+							fi
+							INPUT_SET=1
+							;;
+						--emit-raw)
+							EMIT_MODE="raw"
+							;;
 					--emit-json)
 						EMIT_MODE="json"
 						;;
@@ -367,20 +503,16 @@ clearmode (){
 main (){
 	FZF_LINES=()
 	local fzf_result=""
-	local result_line=""
-	local source=""
-	local payload=""
-	local chosen_station_config=""
-	local play_after_add="0"
-	local -a station_configs=()
 	#all of these need to be stored in a single data format
 	#icon<sep>source<sep>title<sep>full specification (url, text file to select on, whatever)
-	
-	if [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
+
+	if [ "$INPUT_SET" -eq 1 ]; then
+		parse_input_json
+	elif [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
 		# get playlists  
 		append_dup_records "📋" "playlist" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" lsplaylists)
 	fi
-	if [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
+	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"stations"* ]];then
 		# get stations  
 		while IFS= read -r station_path; do
 			if [ -z "$station_path" ]; then
@@ -391,7 +523,7 @@ main (){
 			append_record "🎛️" "station" "$station_name" "$station_path"
 		done < <(${mpdq_bin} -e | sed -n '/\/default[^/]*\.cfg$/d; p')
 	fi
-	if [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
+	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"listentodi"* ]];then
 		# get listen to di or other playlist (prefix an emoji)  
 		# Loop through all .pls files in the specified directory
 		if [ -d "${DI_PLS_DIR}" ];then 
@@ -414,7 +546,7 @@ main (){
 					done
 				fi
 	fi
-	if [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
+	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"radiotray"* ]];then	
 		# get webradio presets from radiotray (functionally equivalent to listen to di here)
 		if [ -f "${XDG_CONFIG_HOME}/radiotray-ng/bookmarks.json" ];then
 			while IFS=$'\t' read -r title url; do
@@ -430,15 +562,15 @@ main (){
 			# TODO MAKE THE VARIABLE WITH STATION EMJOI
 		fi
 	fi	
-	if [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
+	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"genre"* ]];then
 		# get genre 🎼
 		append_dup_records "🎼" "genre" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list genre)
 	fi
-	if [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
+	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
 		# get album_artist  🎸
 		append_dup_records "🎸" "artist" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist)
 	fi
-	if [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
+	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
 		# get album 💿  (present as album by AlbumArtist)
 		append_dup_records "💿" "album" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album)
 	fi
@@ -464,83 +596,17 @@ main (){
 					return 0
 					;;
 			esac
-			fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
-				emit_fzf_display_lines |
-				${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
-			cut -f2-)
-	fi
-
-	if [ -n "$fzf_result" ];then
-		info "Selection made; processing results"
-		clearmode
-
-		# first pass: process everything except station selections
-		while IFS= read -r result_line; do
-			if [ -z "$result_line" ]; then
-				continue
+			if [ "$INPUT_SET" -eq 1 ]; then
+				fzf_result="${FZF_LINES[0]}"
+			else
+				fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
+					emit_fzf_display_lines |
+					${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
+					cut -f2-)
 			fi
-
-			IFS="$RECORD_SEP" read -r _icon source _title payload <<< "$result_line"
-
-			case "$source" in
-				station)
-					station_configs+=("$payload")
-					;;
-				radio)
-					info "Handling source ${source}"
-					mpc_action add "$payload"
-					play_after_add="1"
-					;;
-				playlist)
-					info "Handling source ${source}"
-					mpc_action load "$payload"
-					play_after_add="1"
-					;;
-				genre)
-					info "Handling source ${source}"
-					mpc_action findadd genre "$payload"
-					if [[ "${ADDMODE}" == "1" ]];then
-						mpc_action shuffle
-					fi
-					play_after_add="1"
-					;;
-				album)
-					info "Handling source ${source}"
-					mpc_action findadd album "$payload"
-					mpc_action random off
-					play_after_add="1"
-					;;
-				artist)
-					info "Handling source ${source}"
-					mpc_action findadd albumartist "$payload"
-					if [[ "${ADDMODE}" == "1" ]];then
-						mpc_action shuffle
-					fi
-					play_after_add="1"
-					;;
-				*)
-					warn "Unhandled source type: $source"
-					;;
-			esac
-		done <<< "$fzf_result"
-
-		if [ "$play_after_add" == "1" ]; then
-			mpc_action play
-		fi
-
-		# second pass: if one or more station selections were made, choose one and run it last
-		if [ ${#station_configs[@]} -gt 1 ]; then
-			info "Multiple station selections made; choosing one at random"
-			chosen_station_config=$(printf '%s\n' "${station_configs[@]}" | shuf -n1)
-		elif [ ${#station_configs[@]} -eq 1 ]; then
-			chosen_station_config="${station_configs[0]}"
-		fi
-
-		if [ -n "$chosen_station_config" ]; then
-			info "Handling source station"
-			${mpdq_bin} --config "$chosen_station_config"
-		fi
 	fi
+
+	process_selection_result "$fzf_result"
 	
 
 }

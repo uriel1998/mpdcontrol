@@ -121,6 +121,12 @@ Emit JSON lines for external tooling:
 ./mpdcontrol.sh --emit-json --stations
 ```
 
+Skip source collection and `fzf` entirely by providing one JSON input record:
+
+```bash
+./mpdcontrol.sh --input '{"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}'
+```
+
 Choose from everything:
 
 ```bash
@@ -161,6 +167,8 @@ Enable verbose logging:
 ./mpdcontrol.sh --all --loud
 ```
 
+`--input` accepts only one JSON object per run. To directly process multiple items, call `mpdcontrol.sh` once per item.
+
 ## Supported Options
 
 ```text
@@ -176,11 +184,13 @@ Enable verbose logging:
 --clear
 --crop
 --emit
+--input JSON
 --emit-raw
 --emit-json
 --playlist-dir PATH
 --loud
 -e, --emit
+-i, --input
 -h, --help
 ```
 
@@ -209,6 +219,11 @@ Internal record format:
 ```json
 {"icon":"🎛️","source":"station","title":"Pop","payload":"/home/steven/apps/mpdq/config/Pop.cfg"}
 ```
+
+`--input` accepts JSON with:
+
+- `source`
+- `payload`
 
 If you choose more than one thing, then:
 
