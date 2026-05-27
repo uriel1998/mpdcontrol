@@ -24,6 +24,13 @@ There's icons in the picker to indicate what sort of thing you're selecting, and
 
 Also, if you have anything in the "Bumper" genre, like "radio changing static" sounds, it'll play that to signify the new change.  It amuses me.
 
+## Use Cases
+
+- Listen to an album normally, and then have `mpdq` autopopulate the queue afterward
+- Can't remember an album or artist's full name? Easily find and play it.
+- With the JSON direct input, you can script it so that you have a playlist or semi-random "station" come on at a certain time of day.  You can have a bot, webhook, or home assistant likewise do the same.
+- Use the `--emit` option to get options to pass to a web interface, bot, or home assistant
+
 ## Dependencies
 
 System packages installable with `apt` (I'm using Debian trixie):
