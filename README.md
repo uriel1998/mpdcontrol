@@ -103,6 +103,24 @@ Show help:
 ./mpdcontrol.sh --help
 ```
 
+Emit the list of choices that would be shown in `fzf`, without opening `fzf` or changing playback:
+
+```bash
+./mpdcontrol.sh --emit --stations
+```
+
+Emit the raw internal records, using the unit separator character (`0x1f`) between fields:
+
+```bash
+./mpdcontrol.sh --emit-raw --stations
+```
+
+Emit JSON lines for external tooling:
+
+```bash
+./mpdcontrol.sh --emit-json --stations
+```
+
 Choose from everything:
 
 ```bash
@@ -127,6 +145,8 @@ Choose from `mpdq` stations:
 ./mpdcontrol.sh --stations
 ```
 
+`--station` and `--stations` are equivalent.
+
 If multiple `station` entries are selected in the same run, the script keeps only one of them and chooses it at random.
 
 Choose from ListenToDI `.pls` files in a custom directory:
@@ -145,7 +165,7 @@ Enable verbose logging:
 
 ```text
 --playlist, --playlists
---stations
+--station, --stations
 --listentodi
 --radiotray
 --genre
@@ -155,8 +175,12 @@ Enable verbose logging:
 --append
 --clear
 --crop
+--emit
+--emit-raw
+--emit-json
 --playlist-dir PATH
 --loud
+-e, --emit
 -h, --help
 ```
 
@@ -170,6 +194,21 @@ The script dispatches by `source`:
 - `album` -> `mpc findadd album`
 - `radio` -> `mpc add <url>`
 - `station` -> `mpdq --config <path>`
+
+Internal record format:
+
+- `icon`
+- `source`
+- `title`
+- `payload`
+
+`--emit-raw` returns those fields separated by the ASCII unit separator character (`0x1f`).
+
+`--emit-json` returns one JSON object per line, for example:
+
+```json
+{"icon":"🎛️","source":"station","title":"Pop","payload":"/home/steven/apps/mpdq/config/Pop.cfg"}
+```
 
 If you choose more than one thing, then:
 

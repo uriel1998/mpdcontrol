@@ -42,6 +42,7 @@ LISTEN_TO_DI_PLS=""
 # 2 - crop (with bumper)
 ADDMODE=""
 ADDMODE_SET_BY_ARG="0"
+EMIT_MODE=""
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -105,6 +106,30 @@ function emit_fzf_display_lines() {
 	done
 }
 
+function emit_raw_lines() {
+	printf '%s\n' "${FZF_LINES[@]}"
+}
+
+function emit_json_lines() {
+	local record=""
+	local icon=""
+	local source=""
+	local title=""
+	local payload=""
+	for record in "${FZF_LINES[@]}"; do
+		if [ -z "$record" ]; then
+			continue
+		fi
+		IFS="$RECORD_SEP" read -r icon source title payload <<< "$record"
+		${jq_bin} -cn \
+			--arg icon "$icon" \
+			--arg source "$source" \
+			--arg title "$title" \
+			--arg payload "$payload" \
+			'{icon:$icon,source:$source,title:$title,payload:$payload}'
+	done
+}
+
 function mpc_action() {
 	if [ "$LOUD" -eq 1 ]; then
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" "$@"
@@ -122,7 +147,7 @@ selected result(s).
 
 Source Options:
   --playlist, --playlists  Include MPD playlists
-  --stations               Include mpdq station configs
+  --station, --stations    Include mpdq station configs
   --listentodi             Include .pls radio entries from DI_PLS_DIR
   --radiotray              Include radiotray-ng bookmarks
   --genre                  Include MPD genres
@@ -140,6 +165,9 @@ Config Options:
   --playlist-dir PATH      Override DI_PLS_DIR for --listentodi
 
 Help:
+  -e, --emit               Emit the would-be fzf option display list to stdout and exit
+  --emit-raw               Emit raw internal records to stdout and exit
+  --emit-json              Emit JSON lines to stdout and exit
   -h, --help               Show this help text and exit
 
 Config Resolution:
@@ -222,7 +250,7 @@ read_arguments (){
 	# These set a global variable or array that is checked in 
 	# main by appending the string, e.g. --playlists appends 'playlists '
 	# --playlists -> include playlists from mpc
-	# --stations -> include stations from mpdq
+	# --station/--stations -> include stations from mpdq
 	# --listentodi -> include playlists from DI_PLS_DIR
 	# --radiotray -> include from radiotray
 	# --genre -> include genres
@@ -232,10 +260,19 @@ read_arguments (){
 	
 	# --playlist-dir -> specify DI_PLS_DIR
 	while [ $# -gt 0 ]; do
-			case "$1" in
-				-h|--help)
-					show_help
-					exit 0
+				case "$1" in
+					-e|--emit)
+						EMIT_MODE="display"
+						;;
+					--emit-raw)
+						EMIT_MODE="raw"
+						;;
+					--emit-json)
+						EMIT_MODE="json"
+						;;
+					-h|--help)
+						show_help
+						exit 0
 					;;
 				--append)
 					ADDMODE=0
@@ -255,7 +292,7 @@ read_arguments (){
 				--playlist|--playlists)
 					INCLUDE_SOURCES="${INCLUDE_SOURCES}playlists "
 					;;
-			--stations)
+			--station|--stations)
 				INCLUDE_SOURCES="${INCLUDE_SOURCES}stations "
 				;;
 			--listentodi)
@@ -407,13 +444,29 @@ main (){
 	fi
 
 
-	# present in big ass scrollable list
-	# throw into fzf
-	if [ ${#FZF_LINES[@]} -gt 0 ]; then
-		info "Built ${#FZF_LINES[@]} selectable entries"
-		fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
-			emit_fzf_display_lines |
-			${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
+		# present in big ass scrollable list
+		# throw into fzf
+		if [ ${#FZF_LINES[@]} -gt 0 ]; then
+			info "Built ${#FZF_LINES[@]} selectable entries"
+			case "$EMIT_MODE" in
+				display)
+					printf '%s\n' "${FZF_LINES[@]}" |
+						emit_fzf_display_lines |
+						cut -f1
+					return 0
+					;;
+				raw)
+					emit_raw_lines
+					return 0
+					;;
+				json)
+					emit_json_lines
+					return 0
+					;;
+			esac
+			fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
+				emit_fzf_display_lines |
+				${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
 			cut -f2-)
 	fi
 
