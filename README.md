@@ -127,6 +127,12 @@ Skip source collection and `fzf` entirely by providing one JSON input record:
 ./mpdcontrol.sh --input '{"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}'
 ```
 
+The script also accepts the shell-expanded unquoted form:
+
+```bash
+./mpdcontrol.sh --input {"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}
+```
+
 Choose from everything:
 
 ```bash
@@ -224,6 +230,15 @@ Internal record format:
 
 - `source`
 - `payload`
+
+Accepted `--input` forms:
+
+- quoted JSON:
+  `--input '{"source":"station","payload":"/path/to/file.cfg"}'`
+- shell-expanded key/value form:
+  `--input {"source":"station","payload":"/path/to/file.cfg"}`
+
+`--input` skips source collection and `fzf`, then immediately processes the provided item as if it had been selected by the user.
 
 If you choose more than one thing, then:
 
