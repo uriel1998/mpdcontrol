@@ -1,6 +1,6 @@
 # mpdcontrol
 
-Sometimes I want to listen to an album, or two or three, or a genre *and* an artist, or a stream and then let `mpdq` take over, or, or... and I just want to have one simple interface that can be as flexible as my music taste might be.
+Sometimes I want to listen to an album, or two or three, or a genre *and* an album artist, or a stream and then let `mpdq` take over, or, or... and I just want to have one simple interface that can be as flexible as my music taste might be.
 
 Hence, this program.
 
@@ -17,7 +17,7 @@ It can combine:
 - `.pls` radio entries from `simple_listen_to_di` (or any other similarly formatted)
 - `radiotray-ng` bookmarks
 - MPD genres
-- MPD artists
+- MPD album artists
 - MPD albums
 
 There's icons in the picker to indicate what sort of thing you're selecting, and then it'll queue up the appropriate things.  Or you can have it instantly change clear whatever's playing.  Or have it change after the currently-playing track (unless that's a stream, since streams often don't end).  
@@ -27,7 +27,7 @@ Also, if you have anything in the "Bumper" genre, like "radio changing static" s
 ## Use Cases
 
 - Listen to an album normally, and then have `mpdq` autopopulate the queue afterward
-- Can't remember an album or artist's full name? Easily find and play it.
+- Can't remember an album or album artist's full name? Easily find and play it.
 - With the JSON direct input, you can script it so that you have a playlist or semi-random "station" come on at a certain time of day.  You can have a bot, webhook, or home assistant likewise do the same.
 - Use the `--emit` option to get options to pass to a web interface, bot, or home assistant
 

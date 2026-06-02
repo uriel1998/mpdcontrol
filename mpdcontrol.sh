@@ -47,6 +47,7 @@ INPUT_JSON=""
 INPUT_SET="0"
 INPUT_SOURCE=""
 INPUT_PAYLOAD=""
+PREVIEW_RECORD=""
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -242,6 +243,45 @@ function process_selection_result() {
 	fi
 }
 
+function show_preview_record() {
+	local record="$1"
+	local icon=""
+	local source=""
+	local title=""
+	local payload=""
+
+	if [ -z "$record" ]; then
+		return 0
+	fi
+
+	IFS="$RECORD_SEP" read -r icon source title payload <<< "$record"
+
+	case "$source" in
+		album)
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" --format '%track% %title%' find album "$payload"
+			;;
+		artist)
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album albumartist "$payload"
+			;;
+		genre)
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list album genre "$payload"
+			;;
+		playlist)
+			${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" playlist "$payload"
+			;;
+		station)
+			if [ -f "$payload" ]; then
+				cat "$payload"
+			else
+				printf '%s\n' "$payload"
+			fi
+			;;
+		radio)
+			printf '%s\n' "$payload"
+			;;
+	esac
+}
+
 function mpc_action() {
 	if [ "$LOUD" -eq 1 ]; then
 		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" "$@"
@@ -263,7 +303,7 @@ Source Options:
   --listentodi             Include .pls radio entries from DI_PLS_DIR
   --radiotray              Include radiotray-ng bookmarks
   --genre                  Include MPD genres
-  --artist                 Include MPD artists
+  --artist                 Include MPD album artists
   --album                  Include MPD albums
   --all                    Include all supported sources
 
@@ -367,7 +407,7 @@ read_arguments (){
 	# --listentodi -> include playlists from DI_PLS_DIR
 	# --radiotray -> include from radiotray
 	# --genre -> include genres
-	# --artist -> include artist
+	# --artist -> include album artists
 	# --album -> include albums
 	# --all -> include all, appends string for all to INCLUDE SOURCES
 	
@@ -376,6 +416,14 @@ read_arguments (){
 					case "$1" in
 						-e|--emit)
 							EMIT_MODE="display"
+							;;
+						--preview-record)
+							shift
+							if [ -z "$1" ]; then
+								error "Missing argument for --preview-record"
+								exit 1
+							fi
+							PREVIEW_RECORD="$1"
 							;;
 						-i|--input)
 							if [ "$INPUT_SET" -eq 1 ]; then
@@ -506,6 +554,11 @@ main (){
 	#all of these need to be stored in a single data format
 	#icon<sep>source<sep>title<sep>full specification (url, text file to select on, whatever)
 
+	if [ -n "$PREVIEW_RECORD" ]; then
+		show_preview_record "$PREVIEW_RECORD"
+		return 0
+	fi
+
 	if [ "$INPUT_SET" -eq 1 ]; then
 		parse_input_json
 	elif [[ "${INCLUDE_SOURCES}" == *"playlists"* ]];then
@@ -567,8 +620,8 @@ main (){
 		append_dup_records "🎼" "genre" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list genre)
 	fi
 	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"artist"* ]];then
-		# get album_artist  🎸
-		append_dup_records "🎸" "artist" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list artist)
+		# get albumartist  🎸
+		append_dup_records "🎸" "artist" < <(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" list albumartist)
 	fi
 	if [ "$INPUT_SET" -ne 1 ] && [[ "${INCLUDE_SOURCES}" == *"album"* ]];then
 		# get album 💿  (present as album by AlbumArtist)
@@ -601,7 +654,9 @@ main (){
 			else
 				fzf_result=$(printf '%s\n' "${FZF_LINES[@]}" |
 					emit_fzf_display_lines |
-					${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi |
+					${fzf_bin} --exact --delimiter=$'\t' --with-nth=1 --multi \
+						--preview "${SCRIPT_DIR}/mpdcontrol.sh --preview-record {2}" \
+						--preview-window=right,60%,wrap |
 					cut -f2-)
 			fi
 	fi
