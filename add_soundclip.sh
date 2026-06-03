@@ -113,6 +113,7 @@ function mpc_action() {
 
 read_variables
 
+
 if queue_has_sound_clip_genre; then
     info "We've already got one, you see!" # Skip adding another sound clip
     :
@@ -126,7 +127,4 @@ else
     :
 fi
 
-# need some conditional checks here first, unless forced
-# is there already a sound clip in the queue?
-	
-
+ 

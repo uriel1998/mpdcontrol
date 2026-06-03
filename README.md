@@ -24,6 +24,8 @@ There's icons in the picker to indicate what sort of thing you're selecting, and
 
 Also, if you have anything in the "Bumper" genre, like "radio changing static" sounds, it'll play that to signify the new change.  It amuses me.
 
+The additional script, `add_soundclip.sh` will **add** a random track from the "Sound Clip" genre to the end of the queue, if there is not already a track from that genre in the queue. It uses the same config files as `mpdcontrol`, and can be called on demand or on a timer.
+
 ## Use Cases
 
 - Listen to an album normally, and then have `mpdq` autopopulate the queue afterward
