@@ -122,7 +122,7 @@ else
 	SongStem=$(${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find genre "Sound Clip" | shuf -n1)
 	if [ "$SongStem" != "" ];then
 		SongFile="$MPDBASE/$SongStem"
-		mpc_action insert "${SongStem}"
+		mpc_action add "${SongStem}"
 	fi
     :
 fi
