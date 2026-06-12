@@ -48,6 +48,8 @@ INPUT_SET="0"
 INPUT_SOURCE=""
 INPUT_PAYLOAD=""
 PREVIEW_RECORD=""
+LIMIT=""
+SHUFFLE="0"
 host_arg=""
 LOUD="0"
 FZF_LINES=()
@@ -199,7 +201,7 @@ function process_selection_result() {
 				;;
 			genre)
 				info "Handling source ${source}"
-				mpc_action findadd genre "$payload"
+				add_matching_paths genre "$payload"
 				if [[ "${ADDMODE}" == "1" ]];then
 					mpc_action shuffle
 				fi
@@ -207,13 +209,13 @@ function process_selection_result() {
 				;;
 			album)
 				info "Handling source ${source}"
-				mpc_action findadd album "$payload"
+				add_matching_paths album "$payload"
 				mpc_action random off
 				play_after_add="1"
 				;;
 			artist)
 				info "Handling source ${source}"
-				mpc_action findadd albumartist "$payload"
+				add_matching_paths albumartist "$payload"
 				if [[ "${ADDMODE}" == "1" ]];then
 					mpc_action shuffle
 				fi
@@ -241,6 +243,35 @@ function process_selection_result() {
 		info "Handling source station"
 		${mpdq_bin} --config "$chosen_station_config"
 	fi
+}
+
+function add_matching_paths() {
+	local tag_name="$1"
+	local tag_value="$2"
+	local match_path=""
+
+	if [ "$SHUFFLE" -eq 0 ] && [ -z "$LIMIT" ]; then
+		mpc_action findadd "$tag_name" "$tag_value"
+		return 0
+	fi
+
+	while IFS= read -r match_path; do
+		if [ -n "$match_path" ]; then
+			mpc_action add "$match_path"
+		fi
+	done < <(
+		${mpc_bin} --host "${host_arg}" --port "${MPD_PORT}" find "$tag_name" "$tag_value" |
+		if [ "$SHUFFLE" -eq 1 ]; then
+			shuf
+		else
+			cat
+		fi |
+		if [ -n "$LIMIT" ]; then
+			head -n "$LIMIT"
+		else
+			cat
+		fi
+	)
 }
 
 function show_preview_record() {
@@ -311,6 +342,8 @@ Mode Options:
   --append                 Append selections without clearing or cropping
   --clear                  Clear playlist before adding selections
   --crop                   Crop playlist before adding selections, with bumper logic
+  --limit NUMBER           For genre and artist, add only NUMBER matching entries
+  --shuffle                For genre, artist, and album, shuffle tracks before adding
   --loud                   Enable informational logging and non-quiet mpc actions
 
 Config Options:
@@ -469,6 +502,21 @@ read_arguments (){
 				--crop)
 					ADDMODE=2
 					ADDMODE_SET_BY_ARG=1
+					;;
+				--limit)
+					shift
+					if [ -z "$1" ]; then
+						error "Missing argument for --limit"
+						exit 1
+					fi
+					if ! [[ "$1" =~ ^[0-9]+$ ]] || [ "$1" -lt 1 ]; then
+						error "Invalid value for --limit: $1"
+						exit 1
+					fi
+					LIMIT="$1"
+					;;
+				--shuffle)
+					SHUFFLE=1
 					;;
 				--loud)
 					LOUD=1

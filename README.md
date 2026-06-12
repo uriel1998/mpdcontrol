@@ -142,6 +142,12 @@ The script also accepts the shell-expanded unquoted form:
 ./mpdcontrol.sh --input {"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}
 ```
 
+For example, to directly add shuffled psytrance tracks with a limit of 10:
+
+```bash
+./mpdcontrol.sh --shuffle --limit 10 --input '{"source":"genre","payload":"psytrance"}'
+```
+
 Choose from everything:
 
 ```bash
@@ -158,6 +164,18 @@ Choose items and append them without clearing or cropping first:
 
 ```bash
 ./mpdcontrol.sh --genre --artist --append
+```
+
+Limit genre or album-artist additions to a fixed number of entries:
+
+```bash
+./mpdcontrol.sh --genre --limit 25
+```
+
+Shuffle album, genre, or album-artist tracks before adding them:
+
+```bash
+./mpdcontrol.sh --artist --shuffle
 ```
 
 Choose from `mpdq` stations:
@@ -184,6 +202,8 @@ Enable verbose logging:
 
 `--input` accepts only one JSON object per run. To directly process multiple items, call `mpdcontrol.sh` once per item.
 
+The `--input` JSON is case-sensitive.
+
 ## Supported Options
 
 ```text
@@ -198,6 +218,8 @@ Enable verbose logging:
 --append
 --clear
 --crop
+--limit NUMBER
+--shuffle
 --emit
 --input JSON
 --emit-raw
