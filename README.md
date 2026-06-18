@@ -28,14 +28,14 @@ The additional script, `add_soundclip.sh` will **add** a random track from the "
 
 ## Use Cases
 
-- Listen to an album normally, and then have `mpdq` autopopulate the queue afterward
+- Listen to an album normally, and then have `mpdq` autopopulate the queue afterward.
 - Can't remember an album or album artist's full name? Easily find and play it.
 - With the JSON direct input, you can script it so that you have a playlist or semi-random "station" come on at a certain time of day.  You can have a bot, webhook, or home assistant likewise do the same.
 - Use the `--emit` option to get options to pass to a web interface, bot, or home assistant
 
 ## Dependencies
 
-System packages installable with `apt` (I'm using Debian trixie):
+System packages installable with `apt` (I'm using Debian Trixie):
 
 ```bash
 sudo apt update
@@ -47,7 +47,7 @@ Notes:
 - `mpd` is what we're playing music through, though if you have it installed as a server elsewhere, this is unneeded.
 - `mpc` is the MPD client the script uses for querying and queue actions.
 - `fzf` provides the interactive selector.
-- `jq` is used for `radiotray-ng` bookmark parsing.
+- `jq` is used for `radiotray-ng` (and similar) bookmark parsing.
 - `grep`, `sed`, `coreutils`, and `mawk` cover the shell text-processing used by the script.
 
 External tools referenced by this project:
@@ -67,13 +67,9 @@ Clone this repository and make the script executable:
 chmod +x mpdcontrol.sh
 ```
 
-If you want station support, install `mpdq` from:
+If you want station support, install `mpdq` from: https://github.com/uriel1998/mpdq
 
-- <https://github.com/uriel1998/mpdq>
-
-If you want `.pls` radio support, install or clone:
-
-- <https://github.com/uriel1998/simple_listen_to_di>
+If you want your `.pls` radio stations from Digitally Imported, look at: <https://github.com/uriel1998/simple_listen_to_di>
 
 ## Configuration
 
@@ -102,7 +98,7 @@ ADDMODE=2
 
 - `0`: add without clearing
 - `1`: clear before adding
-- `2`: crop before adding, with a randomly selected track from the genre "Bumper" played first.
+- `2`: crop before adding, with a randomly selected track from the genre "Bumper" played before the newly queued tracks.
 
 ## Usage
 
@@ -110,42 +106,6 @@ Show help:
 
 ```bash
 ./mpdcontrol.sh --help
-```
-
-Emit the list of choices that would be shown in `fzf`, without opening `fzf` or changing playback:
-
-```bash
-./mpdcontrol.sh --emit --stations
-```
-
-Emit the raw internal records, using the unit separator character (`0x1f`) between fields:
-
-```bash
-./mpdcontrol.sh --emit-raw --stations
-```
-
-Emit JSON lines for external tooling:
-
-```bash
-./mpdcontrol.sh --emit-json --stations
-```
-
-Skip source collection and `fzf` entirely by providing one JSON input record:
-
-```bash
-./mpdcontrol.sh --input '{"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}'
-```
-
-The script also accepts the shell-expanded unquoted form:
-
-```bash
-./mpdcontrol.sh --input {"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}
-```
-
-For example, to directly add shuffled psytrance tracks with a limit of 10:
-
-```bash
-./mpdcontrol.sh --shuffle --limit 10 --input '{"source":"genre","payload":"psytrance"}'
 ```
 
 Choose from everything:
@@ -194,15 +154,49 @@ Choose from ListenToDI `.pls` files in a custom directory:
 ./mpdcontrol.sh --listentodi --playlist-dir /path/to/pls
 ```
 
-Enable verbose logging:
+Emit the list of choices that would be shown in `fzf`, without opening `fzf` or changing playback:
+
+```bash
+./mpdcontrol.sh --emit --stations
+```
+
+Emit the raw internal records, using the unit separator character (`0x1f`) between fields:
+
+```bash
+./mpdcontrol.sh --emit-raw --stations
+```
+
+Emit JSON lines for external tooling:
+
+```bash
+./mpdcontrol.sh --emit-json --stations
+```
+
+Skip source collection and `fzf` entirely by providing one JSON input record:
+
+```bash
+./mpdcontrol.sh --input '{"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}'
+```
+
+The script also accepts the shell-expanded unquoted form:
+
+```bash
+./mpdcontrol.sh --input {"source":"station","payload":"/home/steven/.config/mpdq/General_mix.cfg"}
+```
+
+For example, to directly add shuffled psytrance tracks with a limit of 10:
+
+```bash
+./mpdcontrol.sh --shuffle --limit 10 --input '{"source":"genre","payload":"psytrance"}'
+```
+
+`--input` accepts only one JSON object per run. To directly process multiple items, call `mpdcontrol.sh` once per item; the `--input` JSON is case-sensitive.
+
+Enable verbose output:
 
 ```bash
 ./mpdcontrol.sh --all --loud
 ```
-
-`--input` accepts only one JSON object per run. To directly process multiple items, call `mpdcontrol.sh` once per item.
-
-The `--input` JSON is case-sensitive.
 
 ## Supported Options
 
