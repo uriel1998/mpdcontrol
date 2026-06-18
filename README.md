@@ -271,3 +271,5 @@ If you choose more than one thing, then:
 - non-`station` selections are processed first
 - `station` selections are deferred until the end
 - if more than one `station` is selected, one station is chosen at random and passed to `mpdq`
+
+Icon derived from sources including <a href="https://www.flaticon.com/free-icons/control-room" title="control room icons">Control room icons created by Freepik - Flaticon</a>, <a href="https://www.flaticon.com/free-icons/quaver" title="quaver icons">Quaver icons created by Freepik - Flaticon</a>, and <a href="https://www.flaticon.com/free-icons/terminal" title="terminal icons">Terminal icons created by Smashicons - Flaticon</a>
